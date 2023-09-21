@@ -24,9 +24,9 @@
 #define TRIGGER_OFFSET_ADC 50
 #define TRIGGER_DEFAULT 2020
 #define _T 2028
-#define CAL_BAT_V 256
-#define CAL_V 25
-#define CAL_I 38LL<<8
+#define CAL_BAT_V 256 // batteryvoltage calibration factor
+#define CAL_V 25 // voltage calibration factor
+#define CAL_I 38LL<<8 // current calibration factor
 #define INDUCTANCE 6LL
 #define RESISTANCE 40LL
 #define FLUX_LINKAGE 1200LL
@@ -62,7 +62,7 @@
 //#define DIRDET
 #define FRAC_HIGH 30
 #define FRAC_LOW 15
-#define PAS_TIMEOUT 3000
+#define PAS_TIMEOUT 3000 // 8000 = 1s
 #define RAMP_END 1200
 
 //---------------------------------------------------------------------
@@ -77,17 +77,17 @@
 #define GEAR_RATIO 11 //11 for BionX IGH3
 #define SPEEDLIMIT 25
 #define PULSES_PER_REVOLUTION 1
-#define SPEEDSOURCE INTERNAL
+#define SPEEDSOURCE EXTERNAL
 #define SPEEDFILTER 1
 #define SPDSHFT 0
 
 //---------------------------------------------------------------------
 //power settings
-#define PH_CURRENT_MAX 1200
-#define BATTERYCURRENT_MAX 14000
-#define REVERSE 1 //1 for normal direction, -1 for reverse
-#define PUSHASSIST_CURRENT 300
-#define VOLTAGE_MIN 1320 //33V
+#define PH_CURRENT_MAX 900  // 34,2A (34200/CAL_I)
+#define BATTERYCURRENT_MAX 14000 // in mA
+#define REVERSE 1 // 1 for normal direction, -1 for reverse
+#define PUSHASSIST_CURRENT 300 // 11,4A (300*38/1000)
+#define VOLTAGE_MIN 1320 // 33V (33000/CAL_V)
 
 //---------------------------------------------------------------------
 //torquesensor settings
