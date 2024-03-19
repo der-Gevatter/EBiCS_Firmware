@@ -44,8 +44,8 @@
 /* Includes ------------------------------------------------------------------*/
 
 /* USER CODE BEGIN Includes */
-#include "stm32f1xx.h"
 #include <arm_math.h>
+
 
 /* USER CODE END Includes */
 
@@ -121,34 +121,12 @@ void autodetect();
 void runPIcontrol();
 void kingmeter_update(void);
 
-
-
-
-
-extern uint16_t ui16_ph1_offset;
-extern uint16_t ui16_ph2_offset;
-extern uint16_t ui16_ph3_offset;
-
 extern uint16_t switchtime[3];
 extern uint32_t ui32_tim1_counter;
 extern uint32_t uint32_PAS_counter;
 extern uint8_t throttle_is_set(void);
 extern void UART_IdleItCallback(void);
 extern void get_internal_temp_offset(void);
-
-extern void SystemClock_Config(void);
-extern void MX_GPIO_Init(void);
-extern void MX_DMA_Init(void);
-extern void MX_USART1_UART_Init(void);
-
-extern void MX_TIM1_Init(void);
-extern void MX_TIM2_Init(void);
-extern void MX_TIM3_Init(void);
-extern void MX_ADC1_Init(void);
-extern void MX_ADC2_Init(void);
-
-extern void init_watchdog(void);
-extern void MX_IWDG_Init(void);
 
 typedef struct
 {

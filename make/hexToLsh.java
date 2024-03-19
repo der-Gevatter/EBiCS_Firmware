@@ -6,7 +6,7 @@ import java.nio.file.Paths;
 public class hexToLsh {
   public static void main(String[] args) {
     try {
-      String hexFile = "Release/EBiCS_Firmware";
+      String hexFile = "build/EBiCS_Firmware";
 
       File myObj = new File(hexFile + ".hex");
       Scanner myReader = new Scanner(myObj);
