@@ -1537,7 +1537,7 @@ static void MX_USART1_UART_Init(void)
 #elif (DISPLAY_TYPE == DISPLAY_TYPE_BAFANG)
   huart1.Init.BaudRate = 1200;
 #else
-  huart1.Init.BaudRate = 56000;
+  huart1.Init.BaudRate = 57600;
 #endif
 
 
