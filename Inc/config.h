@@ -92,7 +92,7 @@
 //---------------------------------------------------------------------
 //torquesensor settings
 #define TS_COEF 2400
-#define TS_MODE
+//#define TS_MODE
 //#define TQONAD1
 
 //---------------------------------------------------------------------
@@ -108,6 +108,6 @@
 //#define ADC_BRAKE
 
 //---------------------------------------------------------------------
-#define AUTODETECT 0
+#define AUTODETECT 1
 
 #endif /* CONFIG_H_ */
