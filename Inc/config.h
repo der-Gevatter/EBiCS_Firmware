@@ -98,7 +98,7 @@
 //---------------------------------------------------------------------
 //Display settings
 //#define DISPLAY_TYPE DISPLAY_TYPE_DEBUG
-#define DISPLAY_TYPE DISPLAY_TYPE_KINGMETER_618U
+#define DISPLAY_TYPE DISPLAY_TYPE_KINGMETER_901U
 
 //---------------------------------------------------------------------
 //Regen settings
