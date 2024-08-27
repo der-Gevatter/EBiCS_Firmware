@@ -62,7 +62,7 @@
 //#define DIRDET
 #define FRAC_HIGH 30
 #define FRAC_LOW 15
-#define PAS_TIMEOUT 3000 // 8000 = 1s
+#define PAS_TIMEOUT 1500 // 8000 = 1s
 #define RAMP_END 1200
 
 //---------------------------------------------------------------------
@@ -92,8 +92,8 @@
 //---------------------------------------------------------------------
 //torquesensor settings
 #define TS_COEF 2400
-//#define TS_MODE
-//#define TQONAD1
+#define TS_MODE
+#define TQONAD1
 
 //---------------------------------------------------------------------
 //Display settings
