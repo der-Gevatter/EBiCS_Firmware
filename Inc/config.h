@@ -86,12 +86,12 @@
 #define PH_CURRENT_MAX 900  // 34,2A (34200/CAL_I)
 #define BATTERYCURRENT_MAX 14000 // in mA
 #define REVERSE -1 // 1 for normal direction, -1 for reverse
-#define PUSHASSIST_CURRENT 300 // 11,4A (300*38/1000)
+#define PUSHASSIST_CURRENT 30 // 11,4A (300*38/1000)
 #define VOLTAGE_MIN 1320 // 33V (33000/CAL_V)
 
 //---------------------------------------------------------------------
 //torquesensor settings
-#define TS_COEF 2400
+#define TS_COEF 5000
 #define TS_MODE
 #define TQONAD1
 
