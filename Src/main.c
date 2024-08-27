@@ -865,7 +865,8 @@ int main(void)
 
 #else //else NTCE
 			  // read in throttle for throttle override
-			  uint16_mapped_throttle = map(ui16_throttle, ui16_throttle_offset, THROTTLE_MAX, 0,PH_CURRENT_MAX);
+			  //uint16_mapped_throttle = map(ui16_throttle, ui16_throttle_offset, THROTTLE_MAX, 0,PH_CURRENT_MAX);
+			  uint16_mapped_throttle = map(adcData[1], 750, 2850, 0,PH_CURRENT_MAX); //hardcodiert wg. Daumengas und TorqueSensor
 
 #endif //end NTCE
 
