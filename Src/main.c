@@ -674,7 +674,7 @@ int main(void)
 	  if(ui8_adc_regular_flag){
 		ui32_throttle_cumulated -= ui32_throttle_cumulated>>4;
 	#ifdef TQONAD1
-		ui32_throttle_cumulated += adcData[6]; //get value from AD1 PB1
+		ui32_throttle_cumulated += adcData[5]; //get value from AD1 PB1
 	#else
 		ui32_throttle_cumulated += adcData[1]; //get value from SP
 	#endif
