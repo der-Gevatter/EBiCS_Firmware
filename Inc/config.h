@@ -30,10 +30,10 @@
 #define CAL_BAT_V 256
 #define CAL_V 25
 #define CAL_I 38LL<<8
-//#define INDUCTANCE 6LL
-//#define RESISTANCE 40LL
-//#define FLUX_LINKAGE 1200LL
-//#define GAMMA 9LL
+#define INDUCTANCE 6LL
+#define RESISTANCE 40LL
+#define FLUX_LINKAGE 1200LL
+#define GAMMA 9LL
 //#define FAST_LOOP_LOG
 //#define DISABLE_DYNAMIC_ADC
 //#define INDIVIDUAL_MODES
@@ -99,7 +99,7 @@
 //torquesensor settings
 #define TS_COEF 2400
 #define TS_MODE
-//#define TQONAD1
+#define TQONAD1
 
 //---------------------------------------------------------------------
 //Display settings
