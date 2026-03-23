@@ -51,31 +51,31 @@
 
 /* Private define ------------------------------------------------------------*/
 
-#define Hall_1_Pin GPIO_PIN_0
+#define Hall_1_Pin GPIO_PIN_15
 #define Hall_1_GPIO_Port GPIOA
-#define Hall_1_EXTI_IRQn EXTI0_IRQn
-#define Hall_2_Pin GPIO_PIN_1
-#define Hall_2_GPIO_Port GPIOA
-#define Hall_2_EXTI_IRQn EXTI1_IRQn
-#define Hall_3_Pin GPIO_PIN_2
-#define Hall_3_GPIO_Port GPIOA
-#define Hall_3_EXTI_IRQn EXTI2_IRQn
-#define Throttle_Pin GPIO_PIN_3
+#define Hall_1_EXTI_IRQn EXTI15_IRQn
+#define Hall_2_Pin GPIO_PIN_3
+#define Hall_2_GPIO_Port GPIOB
+#define Hall_2_EXTI_IRQn EXTI3_IRQn
+#define Hall_3_Pin GPIO_PIN_10
+#define Hall_3_GPIO_Port GPIOB
+#define Hall_3_EXTI_IRQn EXTI10_IRQn
+#define Throttle_Pin GPIO_PIN_4
 #define Throttle_GPIO_Port GPIOA
-#define Phase_Current1_Pin GPIO_PIN_4
+#define Phase_Current1_Pin GPIO_PIN_0
 #define Phase_Current1_GPIO_Port GPIOA
-#define Phase_Current_2_Pin GPIO_PIN_5
-#define Phase_Current_2_GPIO_Port GPIOA
-#define Phase_Current_3_Pin GPIO_PIN_6
-#define Phase_Current_3_GPIO_Port GPIOA
-#define Temperature_Pin GPIO_PIN_1
-#define Temperature_GPIO_Port GPIOB
+#define Phase_Current_2_Pin GPIO_PIN_1
+#define Phase_Current_2_GPIO_Port GPIOC
+#define Phase_Current_3_Pin GPIO_PIN_0
+#define Phase_Current_3_GPIO_Port GPIOC
+#define Temperature_Pin GPIO_PIN_2
+#define Temperature_GPIO_Port GPIOC
 #define LED_Pin GPIO_PIN_2
 #define LED_GPIO_Port GPIOB
 #define LIGHT_Pin GPIO_PIN_9
 #define LIGHT_GPIO_Port GPIOB
-#define BRAKE_LIGHT_Pin GPIO_PIN_10
-#define BRAKE_LIGHT_GPIO_Port GPIOB
+#define BRAKE_LIGHT_Pin GPIO_PIN_3
+#define BRAKE_LIGHT_GPIO_Port GPIOC
 #define PAS_Pin GPIO_PIN_8
 #define PAS_GPIO_Port GPIOB
 #define Brake_Pin GPIO_PIN_11  // put a 15 here for new generation controllers!
@@ -89,10 +89,10 @@
 
 //#define NCTE
 //#define LEGALFLAG
-#define BATTERYVOLTAGE_MAX 53000
+#define BATTERYVOLTAGE_MAX 15000
 #define R_TEMP_PULLUP 0
 #define INT_TEMP_25 0
-#define USE_FIX_POSITIONS 1
+#define USE_FIX_POSITIONS 0
 //Put values from the startup message after autodetect here, if you want to use fix positions. 32bit values for the hall angles!
 /*
  * i16_60deg_Hall_flag:

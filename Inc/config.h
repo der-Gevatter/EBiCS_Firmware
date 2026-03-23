@@ -30,10 +30,10 @@
 #define CAL_BAT_V 256
 #define CAL_V 25
 #define CAL_I 38LL<<8
-#define INDUCTANCE 6LL
-#define RESISTANCE 40LL
-#define FLUX_LINKAGE 1200LL
-#define GAMMA 9LL
+//#define INDUCTANCE 6LL
+//#define RESISTANCE 40LL
+//#define FLUX_LINKAGE 1200LL
+//#define GAMMA 9LL
 //#define FAST_LOOP_LOG
 //#define DISABLE_DYNAMIC_ADC
 //#define INDIVIDUAL_MODES
@@ -89,11 +89,11 @@
 
 //---------------------------------------------------------------------
 //power settings
-#define PH_CURRENT_MAX 1200
-#define BATTERYCURRENT_MAX 14000
+#define PH_CURRENT_MAX 150
+#define BATTERYCURRENT_MAX 1500
 #define REVERSE 1 //1 for normal direction, -1 for reverse
-#define PUSHASSIST_CURRENT 300
-#define VOLTAGE_MIN 1320 //33V
+#define PUSHASSIST_CURRENT 150
+#define VOLTAGE_MIN 400 //33V
 
 //---------------------------------------------------------------------
 //torquesensor settings

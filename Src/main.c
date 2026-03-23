@@ -461,8 +461,8 @@ int main(void)
 	// TIM1->BDTR &= ~(1L<<15); //reset MOE (Main Output Enable) bit to disable PWM output
 	// Start Timer 2
 	HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
-	//HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_2);
-	//HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_3);
+	HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_2);
+	HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_3);
 
 	// Start Timer 3
 
@@ -521,9 +521,9 @@ int main(void)
 	ui16_throttle_offset=(temp4>>5)+5;
 
 #ifdef DISABLE_DYNAMIC_ADC // set  injected channel with offsets
-	ADC1->JSQR=0b00100000000000000000; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
+	ADC1->JSQR=0b00000000000000000000; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00000 (decimal 0 = channel 0)
 	ADC1->JOFR1 = ui16_ph1_offset;
-	ADC2->JSQR=0b00101000000000000000; //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
+	ADC2->JSQR=0b01011000000000000000; //ADC2 injected reads phase B, JSQ4 = 0b01011, decimal 11
 	ADC2->JOFR1 = ui16_ph2_offset;
 #endif
 
@@ -1093,7 +1093,7 @@ int main(void)
 				//print values for debugging
 
 				sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n",
-						adcData[1],
+						adcData[4],
 						i16_60deg_Hall_flag,
 						ui8_hall_state,
 						uint32_PAS,
@@ -1227,7 +1227,7 @@ int main(void)
 		/**Common config
 		 */
 		hadc1.Instance = ADC1;
-		hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE; //Scan muÃ fÃ¼r getriggerte Wandlung gesetzt sein
+		hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE; //Scan muss f�r getriggerte Wandlung gesetzt sein
 		hadc1.Init.ContinuousConvMode = DISABLE;
 		hadc1.Init.DiscontinuousConvMode = DISABLE;
 		hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T3_TRGO;// Trigger regular ADC with timer 3 ADC_EXTERNALTRIGCONV_T1_CC1;// // ADC_SOFTWARE_START; //
@@ -1251,15 +1251,15 @@ int main(void)
 
 		/**Configure Injected Channel
 		 */
-		sConfigInjected.InjectedChannel = ADC_CHANNEL_4;
+		sConfigInjected.InjectedChannel = ADC_CHANNEL_0;
 		sConfigInjected.InjectedRank = ADC_INJECTED_RANK_1;
 		sConfigInjected.InjectedNbrOfConversion = 1;
 		sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_1CYCLE_5;
 		sConfigInjected.ExternalTrigInjecConv = ADC_EXTERNALTRIGINJECCONV_T1_CC4; // Hier bin ich nicht sicher ob Trigger out oder direkt CC4
-		sConfigInjected.AutoInjectedConv = DISABLE; //muÃ aus sein
+		sConfigInjected.AutoInjectedConv = DISABLE; //muss aus sein
 		sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
 		sConfigInjected.InjectedOffset = ui16_ph1_offset;//1900;
-		HAL_ADC_Stop(&hadc1); //ADC muÃ gestoppt sein, damit Triggerquelle gesetzt werden kann.
+		HAL_ADC_Stop(&hadc1); //ADC muss gestoppt sein, damit Triggerquelle gesetzt werden kann.
 		if (HAL_ADCEx_InjectedConfigChannel(&hadc1, &sConfigInjected) != HAL_OK)
 		{
 			_Error_Handler(__FILE__, __LINE__);
@@ -1267,7 +1267,7 @@ int main(void)
 
 		/**Configure Regular Channel
 		 */
-		sConfig.Channel = ADC_CHANNEL_7; //battery voltage
+		sConfig.Channel = ADC_CHANNEL_1; //battery voltage
 		sConfig.Rank = ADC_REGULAR_RANK_1;
 		sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;//ADC_SAMPLETIME_239CYCLES_5;
 		if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
@@ -1278,7 +1278,7 @@ int main(void)
 
 		/**Configure Regular Channel
 		 */
-		sConfig.Channel = ADC_CHANNEL_3; //Connector SP: throttle input
+		sConfig.Channel = ADC_CHANNEL_4; //Connector SP: throttle input
 		sConfig.Rank = ADC_REGULAR_RANK_2;
 		sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;//ADC_SAMPLETIME_239CYCLES_5;
 		if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
@@ -1287,7 +1287,7 @@ int main(void)
 		}
 		/**Configure Regular Channel
 		 */
-		sConfig.Channel = ADC_CHANNEL_4; //Phase current 1
+		sConfig.Channel = ADC_CHANNEL_0; //Phase current 1
 		sConfig.Rank = ADC_REGULAR_RANK_3;
 		sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;//ADC_SAMPLETIME_239CYCLES_5;
 		if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
@@ -1296,7 +1296,7 @@ int main(void)
 		}
 		/**Configure Regular Channel
 		 */
-		sConfig.Channel = ADC_CHANNEL_5; //Phase current 2
+		sConfig.Channel = ADC_CHANNEL_11; //Phase current 2
 		sConfig.Rank = ADC_REGULAR_RANK_4;
 		sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;//ADC_SAMPLETIME_239CYCLES_5;
 		if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
@@ -1305,7 +1305,7 @@ int main(void)
 		}
 		/**Configure Regular Channel
 		 */
-		sConfig.Channel = ADC_CHANNEL_6; //Phase current 3
+		sConfig.Channel = ADC_CHANNEL_10; //Phase current 3
 		sConfig.Rank = ADC_REGULAR_RANK_5;
 		sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;//ADC_SAMPLETIME_239CYCLES_5;
 		if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
@@ -1315,7 +1315,7 @@ int main(void)
 
 		/**Configure Regular Channel
 		 */
-		sConfig.Channel = ADC_CHANNEL_8;
+		sConfig.Channel = ADC_CHANNEL_14;
 		sConfig.Rank = ADC_REGULAR_RANK_6; // connector AD2
 		sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;//ADC_SAMPLETIME_239CYCLES_5;
 		if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
@@ -1325,7 +1325,7 @@ int main(void)
 
 		/**Configure Regular Channel
 		 */
-		sConfig.Channel = ADC_CHANNEL_9; // connector AD1, temperature or torque input for Controller from PhoebeLiu @ aliexpress
+		sConfig.Channel = ADC_CHANNEL_5; // connector AD1, temperature or torque input for Controller from PhoebeLiu @ aliexpress
 		sConfig.Rank = ADC_REGULAR_RANK_7;
 		sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;//ADC_SAMPLETIME_239CYCLES_5;
 		if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
@@ -1367,7 +1367,7 @@ int main(void)
 
 		/**Configure Injected Channel
 		 */
-		sConfigInjected.InjectedChannel = ADC_CHANNEL_5;
+		sConfigInjected.InjectedChannel = ADC_CHANNEL_11;
 		sConfigInjected.InjectedRank = ADC_INJECTED_RANK_1;
 		sConfigInjected.InjectedNbrOfConversion = 1;
 		sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_1CYCLE_5;
@@ -1588,7 +1588,7 @@ int main(void)
 #elif (DISPLAY_TYPE == DISPLAY_TYPE_BAFANG_LCD)
 		huart1.Init.BaudRate = 1200; 
 #else
-		huart1.Init.BaudRate = 56000;
+		huart1.Init.BaudRate = 57600;
 #endif
 
 
@@ -1643,15 +1643,22 @@ int main(void)
 		/* GPIO Ports Clock Enable */
 		__HAL_RCC_GPIOA_CLK_ENABLE();
 		__HAL_RCC_GPIOB_CLK_ENABLE();
+		__HAL_RCC_GPIOC_CLK_ENABLE();
 
 		/*Configure GPIO pin Output Level */
 		HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 
-		/*Configure GPIO pins : Hall_1_Pin Hall_2_Pin Hall_3_Pin */
-		GPIO_InitStruct.Pin = Hall_1_Pin|Hall_2_Pin|Hall_3_Pin;
+		/*Configure GPIO pins : Hall_1_*/
+		GPIO_InitStruct.Pin = Hall_1_Pin;
 		GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
 		GPIO_InitStruct.Pull = GPIO_PULLUP;
 		HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+		/*Configure GPIO pins : Hall_2_ Hall_3*/
+		GPIO_InitStruct.Pin = Hall_2_Pin|Hall_3_Pin;
+		GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+		GPIO_InitStruct.Pull = GPIO_PULLUP;
+		HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 		/*Configure GPIO pin : LED_Pin */
 		GPIO_InitStruct.Pin = LED_Pin;
@@ -1881,13 +1888,17 @@ int main(void)
 
 		//Hall sensor event processing
 
-		ui8_hall_state = GPIOA->IDR & 0b111; //Mask input register with Hall 1 - 3 bits
-
+		//ui8_hall_state = GPIOA->IDR & 0b111; //Mask input register with Hall 1 - 3 bits
+		ui8_hall_state =
+		    ((GPIOA->IDR >> 15) & 0x1) |   // PA15 -> Bit 0
+		    ((GPIOB->IDR >> 3)  & 0x1) << 1 | // PB3  -> Bit 1
+		    ((GPIOB->IDR >> 10) & 0x1) << 2;  // PB10 -> Bit 2
 
 		ui8_hall_case=ui8_hall_state_old*10+ui8_hall_state;
 		if(MS.hall_angle_detect_flag){ //only process, if autodetect procedere is fininshed
 			ui8_hall_state_old=ui8_hall_state;
 		}
+
 #if (USE_FIX_POSITIONS)
 //Check for 60� hall configuration
 		if(ui8_hall_state==0)i16_60deg_Hall_flag |= 0b1;
@@ -2261,9 +2272,11 @@ int main(void)
 		{
 		case 1: //Phase C at high dutycycles, read current from phase A + B
 		{
-			ADC1->JSQR=0b00100000000000000000; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
+			//ADC1->JSQR=0b00100000000000000000; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
+			ADC1->JSQR=0b00000000000000000000; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 0 = channel 0)
 			ADC1->JOFR1 = ui16_ph1_offset;
-			ADC2->JSQR=0b00101000000000000000; //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
+			//ADC2->JSQR=0b00101000000000000000; //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
+			ADC2->JSQR=0b01011000000000000000; //ADC2 injected reads phase B, JSQ4 = 0b01011, decimal 11
 			ADC2->JOFR1 = ui16_ph2_offset;
 
 
@@ -2271,9 +2284,11 @@ int main(void)
 		break;
 		case 2: //Phase A at high dutycycles, read current from phase C + B
 		{
-			ADC1->JSQR=0b00110000000000000000; //ADC1 injected reads phase C, JSQ4 = 0b00110, decimal 6
+			//ADC1->JSQR=0b00110000000000000000; //ADC1 injected reads phase C, JSQ4 = 0b00110, decimal 6
+			ADC1->JSQR=0b01010000000000000000; //ADC1 injected reads phase C, JSQ4 = 0b01010, decimal 10
 			ADC1->JOFR1 = ui16_ph3_offset;
-			ADC2->JSQR=0b00101000000000000000; //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
+			//ADC2->JSQR=0b00101000000000000000; //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
+			ADC2->JSQR=0b01011000000000000000; //ADC2 injected reads phase B, JSQ4 = 0b01011, decimal 11
 			ADC2->JOFR1 = ui16_ph2_offset;
 
 
@@ -2282,9 +2297,11 @@ int main(void)
 
 		case 3: //Phase B at high dutycycles, read current from phase A + C
 		{
-			ADC1->JSQR=0b00100000000000000000; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
+			//ADC1->JSQR=0b00100000000000000000; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
+			ADC1->JSQR=0b00000000000000000000; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 0 = channel 0)
 			ADC1->JOFR1 = ui16_ph1_offset;
-			ADC2->JSQR=0b00110000000000000000; //ADC2 injected reads phase C, JSQ4 = 0b00110, decimal 6
+			//ADC2->JSQR=0b00110000000000000000; //ADC2 injected reads phase C, JSQ4 = 0b00110, decimal 6
+			ADC2->JSQR=0b01010000000000000000; //ADC1 injected reads phase C, JSQ4 = 0b01010, decimal 10
 			ADC2->JOFR1 = ui16_ph3_offset;
 
 
@@ -2312,7 +2329,7 @@ int main(void)
 		MS.hall_angle_detect_flag = 0; //set uq to contstant value in FOC.c for open loop control
 		q31_rotorposition_absolute = 1 << 31;
 		i16_hall_order = 1;//reset hall order
-		MS.i_d_setpoint= 300; //set MS.id to appr. 2000mA
+		MS.i_d_setpoint= 100; //set MS.id to appr. 2000mA
 		MS.i_q_setpoint= 0;
 		//	uint8_t zerocrossing = 0;
 		//	q31_t diffangle = 0;
@@ -2321,7 +2338,8 @@ int main(void)
 			HAL_IWDG_Refresh(&hiwdg);
 			q31_rotorposition_absolute += 11930465; //drive motor in open loop with steps of 1 deg
 			HAL_Delay(5);
-			//printf_("%d, %d, %d, %d\n", temp3>>16,temp4>>16,temp5,temp6);
+			//printf_("%d, %d, %d, %d\n", adcData[2], adcData[3], adcData[4], adcData[1]);
+			//printf_("%d, %d\n", ui8_hall_state_old, ui8_hall_state);
 
 			if (ui8_hall_state_old != ui8_hall_state) {
 				printf_("angle: %d, hallstate:  %d, hallcase %d, q31_angle %u \n",
@@ -2435,7 +2453,6 @@ int main(void)
 			break;
 		case 1:
 			q31_rotorposition_hall = Hall_51;
-
 			break;
 		case 3:
 			q31_rotorposition_hall = Hall_13;

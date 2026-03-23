@@ -107,18 +107,28 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
     __HAL_RCC_ADC1_CLK_ENABLE();
   
     /**ADC1 GPIO Configuration    
-    PA3     ------> ADC1_IN3
-    PA4     ------> ADC1_IN4
-    PA5     ------> ADC1_IN5
-    PA6     ------> ADC1_IN6 
+    PA0     ------> ADC1_IN0 - PhaseCurrent_1
+    PA0     ------> ADC1_IN1 - Battery Voltage
+    PA4     ------> ADC1_IN4 - Throttle
+    PA5     ------> ADC1_IN5 - Motortemp
+
+    PC0		------> ADC1_IN10 - Phase_Current_3
+    PC1		------> ADC1_IN11 - Phase_Current_2
+    PC2		------> ADC1_IN12 - Temperature
+    PC4		------> ADC1_IN14 - AD2 (Torque)
+
     */
-    GPIO_InitStruct.Pin = Throttle_Pin|Phase_Current1_Pin|Phase_Current_2_Pin|Phase_Current_3_Pin|GPIO_PIN_7; //128 for PA7 = AIN7
+    GPIO_InitStruct.Pin = Throttle_Pin|Phase_Current1_Pin|GPIO_PIN_1|GPIO_PIN_5;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin =  Temperature_Pin|GPIO_PIN_0|GPIO_PIN_1; //for ADC8+9
+    GPIO_InitStruct.Pin =  Temperature_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = Phase_Current_2_Pin|Phase_Current_3_Pin|GPIO_PIN_4;
+    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
     /* ADC1 DMA Init */
     /* ADC1 Init */
@@ -153,13 +163,17 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
     __HAL_RCC_ADC2_CLK_ENABLE();
   
     /**ADC2 GPIO Configuration    
-    PA4     ------> ADC2_IN4
-    PA5     ------> ADC2_IN5
-    PA6     ------> ADC2_IN6 
+    PA0-WKUP     ------> ADC2_IN0
+    PC0     ------> ADC2_IN10
+    PC1     ------> ADC2_IN11 
     */
-    GPIO_InitStruct.Pin = Phase_Current1_Pin|Phase_Current_2_Pin|Phase_Current_3_Pin;
+    GPIO_InitStruct.Pin = Phase_Current1_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = Phase_Current_2_Pin|Phase_Current_3_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
     /* ADC2 interrupt Init */
     HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
@@ -181,14 +195,21 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
   /* USER CODE END ADC1_MspDeInit 0 */
     /* Peripheral clock disable */
     __HAL_RCC_ADC1_CLK_DISABLE();
-  
+
     /**ADC1 GPIO Configuration    
-    PA3     ------> ADC1_IN3
-    PA4     ------> ADC1_IN4
-    PA5     ------> ADC1_IN5
-    PA6     ------> ADC1_IN6 
+    PA0     ------> ADC1_IN0 - PhaseCurrent_1
+    PA0     ------> ADC1_IN1 - Battery Voltage
+    PA4     ------> ADC1_IN4 - Throttle
+    PA5     ------> ADC1_IN5 - Motortemp
+
+    PC0		------> ADC1_IN10 - Phase_Current_3
+    PC1		------> ADC1_IN11 - Phase_Current_2
+    PC2		------> ADC1_IN12 - Temperature
+    PC4		------> ADC1_IN14 - AD2 (Torque)
     */
-    HAL_GPIO_DeInit(GPIOA, Throttle_Pin|Phase_Current1_Pin|Phase_Current_2_Pin|Phase_Current_3_Pin);
+    HAL_GPIO_DeInit(GPIOA, Throttle_Pin|Phase_Current1_Pin);
+
+    HAL_GPIO_DeInit(GPIOC, Phase_Current_2_Pin|Phase_Current_3_Pin);
 
     /* ADC1 DMA DeInit */
     HAL_DMA_DeInit(hadc->DMA_Handle);
@@ -219,7 +240,9 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
     PA5     ------> ADC2_IN5
     PA6     ------> ADC2_IN6 
     */
-    HAL_GPIO_DeInit(GPIOA, Phase_Current1_Pin|Phase_Current_2_Pin|Phase_Current_3_Pin);
+    HAL_GPIO_DeInit(GPIOA, Phase_Current1_Pin);
+
+    HAL_GPIO_DeInit(GPIOC, Phase_Current_2_Pin|Phase_Current_3_Pin);
 
     /* ADC2 interrupt DeInit */
   /* USER CODE BEGIN ADC2:ADC1_2_IRQn disable */
@@ -272,7 +295,7 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
 	     PA1     ------> TIM2_CH2
 	     PA2     ------> TIM2_CH3
 	     */
-
+	     __HAL_AFIO_REMAP_TIM2_ENABLE();
 
 	     /* TIM2 interrupt Init */
 	     HAL_NVIC_SetPriority(TIM2_IRQn, 0, 1);
@@ -309,22 +332,24 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
   /* USER CODE END TIM1_MspPostInit 0 */
   
     /**TIM1 GPIO Configuration    
-    PB13     ------> TIM1_CH1N
-    PB14     ------> TIM1_CH2N
-    PB15     ------> TIM1_CH3N
+    PA7     ------> TIM1_CH1N
+    PB0     ------> TIM1_CH2N
+    PB1     ------> TIM1_CH3N
     PA8     ------> TIM1_CH1
     PA9     ------> TIM1_CH2
     PA10     ------> TIM1_CH3 
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
+	GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10;
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    __HAL_AFIO_REMAP_TIM1_PARTIAL();
 
   /* USER CODE BEGIN TIM1_MspPostInit 1 */
 
