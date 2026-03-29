@@ -6,8 +6,7 @@
  */
 
 #include "init.h"
-#include "stm32f10x.h"
-#include "stm32f10x_dma.h"
+#include "stm32f103x6.h"
 #include "main.h"
 
 
@@ -191,8 +190,8 @@ void ADC1_DMA_TIM3_Init_Start(volatile uint16_t* adcData)
 
     // 4) Configure DMA1 Channel1 for ADC1 -> Memory (adcData)
     // Disable channel first
-    DMA1_Channel1->CCR &= ~DMA_CCR1_EN;
-    while (DMA1_Channel1->CCR & DMA_CCR1_EN) {}
+    DMA1_Channel1->CCR &= ~DMA_CCR_EN;
+    while (DMA1_Channel1->CCR & DMA_CCR_EN) {}
 
     // Peripheral address = ADC1->DR
     DMA1_Channel1->CPAR = (uint32_t)&ADC1->DR;
@@ -209,13 +208,13 @@ void ADC1_DMA_TIM3_Init_Start(volatile uint16_t* adcData)
     // - Priority high
     // - Direction peripheral-to-memory (DIR = 0)
     DMA1_Channel1->CCR = 0;
-    DMA1_Channel1->CCR |= DMA_CCR1_MINC;          // Memory increment
+    DMA1_Channel1->CCR |= DMA_CCR_MINC;          // Memory increment
     // PSIZE = 01 (16-bit) -> bits [9:8] = 01
     DMA1_Channel1->CCR |= (1U << 8);
     // MSIZE = 01 (16-bit) -> bits [11:10] = 01
     DMA1_Channel1->CCR |= (1U << 10);
     // Circular mode (enable for continuous repeated transfers)
-    DMA1_Channel1->CCR |= DMA_CCR1_CIRC;
+    DMA1_Channel1->CCR |= DMA_CCR_CIRC;
     // Priority level: very high (PL = 11 -> bits [13:12])
     DMA1_Channel1->CCR |= (3U << 12);
     // Option: enable transfer complete interrupt:
@@ -224,7 +223,7 @@ void ADC1_DMA_TIM3_Init_Start(volatile uint16_t* adcData)
     DMA1->IFCR = DMA_IFCR_CGIF1 | DMA_IFCR_CTCIF1 | DMA_IFCR_CHTIF1 | DMA_IFCR_CTEIF1; // clear all (implementation dependent)
 
     // 5) Enable DMA channel
-    DMA1_Channel1->CCR |= DMA_CCR1_EN;
+    DMA1_Channel1->CCR |= DMA_CCR_EN;
 
     // 6) Make sure ADC regular external trigger is set to TIM3 TRGO and EXTTRIG is enabled
     //    You already set EXTSEL=4 (TIM3 TRGO) and EXTTRIG in your MX_ADC1_Init.
@@ -250,7 +249,7 @@ void HAL_ADC_ConvCpltCallback(void);
 void HAL_ADCEx_InjectedConvCpltCallback(void);
 
 // IRQ-Handler
-void ADC1_IRQHandler(void)
+/*void ADC1_IRQHandler(void)
 {
     uint32_t sr = ADC1->SR;
 
@@ -268,4 +267,4 @@ void ADC1_IRQHandler(void)
         HAL_ADCEx_InjectedConvCpltCallback();
     }
 
-}
+}*/
