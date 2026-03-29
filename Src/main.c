@@ -39,6 +39,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f1xx_hal.h"
+#include "init.h"
 
 
 
@@ -347,7 +348,7 @@ int main(void)
 	/* USER CODE END Init */
 
 	/* Configure the system clock */
-	SystemClock_Config();
+	SystemClock_Config_CMSIS();
 
 	/* USER CODE BEGIN SysInit */
 
