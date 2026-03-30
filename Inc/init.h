@@ -23,7 +23,6 @@
 //extern IWDG_HandleTypeDef hiwdg;
 
 /* Function prototypes -----------------------------------------------*/
-//void SystemClock_Config(void);
 void SystemClock_Config_CMSIS(void);
 
 //void MX_TIM1_Init(void);
@@ -35,6 +34,7 @@ void ADC1_DMA_TIM3_Init_Start(volatile uint16_t * adcData);
 //void MX_ADC2_Init(void);
 
 //void MX_GPIO_Init(void);
+void MX_GPIO_Init_CMSIS(void);
 
 //void MX_USART1_UART_Init(void);
 //void MX_DMA_Init(void);

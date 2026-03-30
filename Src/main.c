@@ -278,7 +278,6 @@ int16_t power;										//recent power output
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_TIM1_Init(void);
@@ -355,7 +354,7 @@ int main(void)
 	/* USER CODE END SysInit */
 
 	/* Initialize all configured peripherals */
-	MX_GPIO_Init();
+	MX_GPIO_Init_CMSIS();
 	MX_DMA_Init();
 	MX_USART1_UART_Init();
 
@@ -1633,80 +1632,6 @@ int main(void)
 
 	}
 
-	/** Configure pins as
-	 * Analog
-	 * Input
-	 * Output
-	 * EVENT_OUT
-	 * EXTI
-	 */
-	static void MX_GPIO_Init(void)
-	{
-
-		GPIO_InitTypeDef GPIO_InitStruct;
-
-		/* GPIO Ports Clock Enable */
-		__HAL_RCC_GPIOA_CLK_ENABLE();
-		__HAL_RCC_GPIOB_CLK_ENABLE();
-		__HAL_RCC_GPIOC_CLK_ENABLE();
-
-		/*Configure GPIO pin Output Level */
-		HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
-
-		/*Configure GPIO pins : Hall_1_*/
-		GPIO_InitStruct.Pin = Hall_1_Pin;
-		GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-		GPIO_InitStruct.Pull = GPIO_PULLUP;
-		HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-		/*Configure GPIO pins : Hall_2_ Hall_3*/
-		GPIO_InitStruct.Pin = Hall_2_Pin|Hall_3_Pin;
-		GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-		GPIO_InitStruct.Pull = GPIO_PULLUP;
-		HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-		/*Configure GPIO pin : LED_Pin */
-		GPIO_InitStruct.Pin = LED_Pin;
-		GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-		HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
-
-		/*Configure GPIO pin : LIGHT_Pin */
-		GPIO_InitStruct.Pin = LIGHT_Pin;
-		GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		HAL_GPIO_Init(LIGHT_GPIO_Port, &GPIO_InitStruct);
-
-		/*Configure GPIO pin : BRAKE_LIGHT_Pin */
-		GPIO_InitStruct.Pin = BRAKE_LIGHT_Pin;
-		GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		HAL_GPIO_Init(BRAKE_LIGHT_GPIO_Port, &GPIO_InitStruct);
-
-		/*Configure GPIO pin : Brake_Pin */
-		GPIO_InitStruct.Pin = Brake_Pin;
-		GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-		GPIO_InitStruct.Pull = GPIO_PULLUP;
-		HAL_GPIO_Init(Brake_GPIO_Port, &GPIO_InitStruct);
-
-
-		/*Configure GPIO pins : Speed_EXTI5_Pin PAS_EXTI8_Pin */
-		GPIO_InitStruct.Pin = Speed_EXTI5_Pin|PAS_EXTI8_Pin;
-		GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-		GPIO_InitStruct.Pull = GPIO_PULLUP;
-		HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-
-		/* EXTI interrupt init*/
-
-
-		HAL_NVIC_SetPriority(EXTI9_5_IRQn, 2, 0);
-		HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
-
-	}
-
-	/* USER CODE BEGIN 4 */
 
 	void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	{
