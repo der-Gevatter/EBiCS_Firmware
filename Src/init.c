@@ -12,6 +12,7 @@
 
 void SystemClock_Config_CMSIS(void)
 {
+
     /* 1) Enable HSI and wait ready */
     RCC->CR |= RCC_CR_HSION;
     while (!(RCC->CR & RCC_CR_HSIRDY)) {}
@@ -46,15 +47,16 @@ void SystemClock_Config_CMSIS(void)
     /* APB2 default DIV1, AHB default DIV1 */
 
     /* 7) Configure ADC prescaler: ADCCLK = PCLK2 / 6
-       In RM0008 ADC prescaler bits ADCPRE[1:0] in RCC_CFGR2 for some series,
-       but for STM32F1 standard peripheral lib uses RCC->CFGR & ADC prescaler in RCC->CFGR?
        For STM32F1: ADC prescaler is in RCC->CFGR (ADCPRE bits) as RCC_CFGR_ADCPRE_x.
     */
     /* Clear ADCPRE bits then set to /6 (bits encoding: 10 -> /6) */
     RCC->CFGR &= ~RCC_CFGR_ADCPRE;
     RCC->CFGR |= RCC_CFGR_ADCPRE_DIV6;
 
-    /* 8) Enable peripheral clocks if needed elsewhere (Systick uses HCLK) */
+	/* 8) Update SystemCoreClock Variable */
+	SystemCoreClockUpdate();
+
+    /* 9) Enable peripheral clocks if needed elsewhere (Systick uses HCLK) */
     /* Systick: configure to 1ms tick */
     SysTick->LOAD = (SystemCoreClock / 1000U) - 1U; /* SystemCoreClock should be 64MHz */
     SysTick->VAL = 0;
