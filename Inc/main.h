@@ -86,6 +86,10 @@
 #define PAS_EXTI8_Pin 8
 #define PAS_EXTI8_GPIO_Port GPIOB
 #define PAS_EXTI8_EXTI_IRQn EXTI9_5_IRQn
+#define UART_TX_Pin 6
+#define UART_TX_GPIO_Port GPIOB
+#define UART_RX_Pin 7
+#define UART_RX_GPIO_Port GPIOB
 
 //#define NCTE
 //#define LEGALFLAG
@@ -150,6 +154,8 @@ extern uint32_t uint32_PAS_counter;
 extern uint8_t throttle_is_set(void);
 extern uint8_t brake_is_set(void);
 extern void UART_IdleItCallback(void);
+void UART_TxCpltCallback(void);
+void UART_ErrorCallback(void);
 extern void get_internal_temp_offset(void);
 
 typedef struct

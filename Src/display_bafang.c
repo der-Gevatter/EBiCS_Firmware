@@ -23,7 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "config.h"
 #include "display_bafang.h"
 #include "main.h"
-#include "stm32f1xx_hal.h"
+#include "uart_irq_layer.h"
+#include "gpio_cmsis.h"
 
 #if (DISPLAY_TYPE & DISPLAY_TYPE_BAFANG)
 
@@ -65,7 +66,8 @@ void Bafang_Init (BAFANG_t* BF_ctx)
     }
 
     //Start UART with DMA
-    if (HAL_UART_Receive_DMA(&huart1, (uint8_t *)BF_ctx->RxBuff, BF_MAX_RXBUFF) != HAL_OK)
+    uart_rx_start_circular((uint8_t *)BF_ctx->RxBuff, BF_MAX_RXBUFF);
+    if (!(DMA1_Channel5->CCR & DMA_CCR_EN))
      {
  	   Error_Handler();
      }
@@ -106,20 +108,18 @@ void Bafang_Service(BAFANG_t* BF_ctx, uint8_t  rx, MotorState_t *MS)
     if(recent_pointer_position>last_pointer_position){
     	Rx_message_length=recent_pointer_position-last_pointer_position;
     	//printf_("groesser %d, %d, %d \n ",recent_pointer_position,last_pointer_position, Rx_message_length);
-    	//HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+    	//gpio_set(LED_GPIO_Port, LED_Pin);
     	memcpy(BF_Message,BF_ctx->RxBuff+last_pointer_position,Rx_message_length);
-    	//HAL_UART_Transmit(&huart3, (uint8_t *)&BF_Message, Rx_message_length,50);
 	}
     else {
     	Rx_message_length=recent_pointer_position+64-last_pointer_position;
      	memcpy(BF_Message,BF_ctx->RxBuff+last_pointer_position,64-last_pointer_position);
         memcpy(BF_Message+64-last_pointer_position,BF_ctx->RxBuff,recent_pointer_position);
-      //  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+        //gpio_set(LED_GPIO_Port, LED_Pin);
 
 
     }
     last_pointer_position=recent_pointer_position;
-   // HAL_UART_Transmit_DMA(&huart1, (uint8_t *)&BF_Message, Rx_message_length);
     
 
           uint8_t status = BF_STATUS_NORMAL;
@@ -134,7 +134,7 @@ void Bafang_Service(BAFANG_t* BF_ctx, uint8_t  rx, MotorState_t *MS)
                 TxBuff[0]=(BF_ctx->Tx.Speed>>8);
                 TxBuff[1]=(BF_ctx->Tx.Speed&0xff);
                 TxBuff[2]=TxBuff[0]+TxBuff[1]+32;
-                HAL_UART_Transmit_DMA(&huart1, (uint8_t *)&TxBuff, 3);
+                uart_tx_start_dma((uint8_t *)&TxBuff, 3, UART_TxCpltCallback, UART_ErrorCallback);
               break;
 
               case BF_CMD_GETSTATUS:
@@ -147,19 +147,19 @@ void Bafang_Service(BAFANG_t* BF_ctx, uint8_t  rx, MotorState_t *MS)
                     status = BF_STATUS_BRAKING;
                 }
                 TxBuff[0]=status;
-                HAL_UART_Transmit_DMA(&huart1, (uint8_t *)&TxBuff, 1);
+                uart_tx_start_dma((uint8_t *)&TxBuff, 1, UART_TxCpltCallback, UART_ErrorCallback);
               break;
 
               case BF_CMD_GETBAT:
                 TxBuff[0]=BF_ctx->Tx.Battery;
                 TxBuff[1]=BF_ctx->Tx.Battery;
-                HAL_UART_Transmit_DMA(&huart1, (uint8_t *)&TxBuff, 2);
+                uart_tx_start_dma((uint8_t *)&TxBuff, 2, UART_TxCpltCallback, UART_ErrorCallback);
               break;
 
               case BF_CMD_GETPOWER:
                 TxBuff[0]=BF_ctx->Tx.Power & 0xFF;
                 TxBuff[1]=BF_ctx->Tx.Power & 0xFF;
-                HAL_UART_Transmit_DMA(&huart1, (uint8_t *)&TxBuff, 2);
+                uart_tx_start_dma((uint8_t *)&TxBuff, 2, UART_TxCpltCallback, UART_ErrorCallback);
                 break;
 
               case BF_CMD_GET2:
@@ -170,14 +170,14 @@ void Bafang_Service(BAFANG_t* BF_ctx, uint8_t  rx, MotorState_t *MS)
                     TxBuff[0]='0'; //0x30
                     TxBuff[1]='0';
                 }
-                HAL_UART_Transmit_DMA(&huart1, (uint8_t *)&TxBuff, 2);
+                uart_tx_start_dma((uint8_t *)&TxBuff, 2, UART_TxCpltCallback, UART_ErrorCallback);
                 break;
               case BF_CMD_GETRANGE:
                 // range is in whole KM, display motor temperature
                 TxBuff[0] = (uint8_t)((MS->Temperature & 0xFF00) >> 8);
                 TxBuff[1] = (uint8_t)(MS->Temperature & 0xFF);
                 TxBuff[2] = (uint8_t)(((MS->Temperature & 0xFF00) >> 8) + (MS->Temperature & 0xFF));
-                HAL_UART_Transmit_DMA(&huart1, (uint8_t *)&TxBuff, 3);
+                uart_tx_start_dma((uint8_t *)&TxBuff, 3, UART_TxCpltCallback, UART_ErrorCallback);
                 break;
               case BF_CMD_GETCAL:
                 // calories in whole cal
@@ -185,7 +185,7 @@ void Bafang_Service(BAFANG_t* BF_ctx, uint8_t  rx, MotorState_t *MS)
                 TxBuff[0] = (uint8_t) ((uint16_t) batval >> 8); 
                 TxBuff[1] = (uint8_t) batval;
                 TxBuff[2] = (uint8_t) ((batval >> 8) + (batval & 0x00FF));
-                HAL_UART_Transmit_DMA(&huart1, (uint8_t *)&TxBuff, 3);
+                uart_tx_start_dma((uint8_t *)&TxBuff, 3, UART_TxCpltCallback, UART_ErrorCallback);
                 break;
 #ifdef DEBUG
               default:

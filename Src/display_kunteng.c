@@ -7,8 +7,9 @@
 
 #include "main.h"
 #include "display_kunteng.h"
-#include "stm32f1xx_hal.h"
 #include "eeprom.h"
+#include "uart_irq_layer.h"
+#include "gpio_cmsis.h"
 
 static uint8_t ui8_tx_buffer[12];
 uint8_t ui8_j;
@@ -30,13 +31,14 @@ uint8_t ui8_gear_ratio = GEAR_RATIO;
 
 volatile struc_lcd_configuration_variables lcd_configuration_variables;
 
-extern UART_HandleTypeDef huart1;
 void check_recent(void);
 
 void kunteng_init()
 {
 
-    if (HAL_UART_Receive_DMA(&huart1, (uint8_t *)ui8_rx_buffer, 13) != HAL_OK)
+    //if (HAL_UART_Receive_DMA(&huart1, (uint8_t *)ui8_rx_buffer, 13) != HAL_OK)
+    uart_rx_start_circular((uint8_t *)ui8_rx_buffer, 13);
+    if (!(DMA1_Channel5->CCR & DMA_CCR_EN))
      {
  	   Error_Handler();
      }
@@ -90,7 +92,7 @@ void display_update(MotorState_t* MS_U)
 
    // prepare moving indication info
   ui8_moving_indication = 0;
-if (!HAL_GPIO_ReadPin(Brake_GPIO_Port, Brake_Pin)) { ui8_moving_indication |= (1 << 5); }
+  if (!gpio_read(Brake_GPIO_Port, Brake_Pin)) { ui8_moving_indication |= (1 << 5); }
   //if (ebike_app_cruise_control_is_set ()) { ui8_moving_indication |= (1 << 3); }
   if (throttle_is_set ()) { ui8_moving_indication |= (1 << 1); }
   //if (pas_is_set ()) { ui8_moving_indication |= (1 << 4); }
@@ -155,7 +157,7 @@ if (!HAL_GPIO_ReadPin(Brake_GPIO_Port, Brake_Pin)) { ui8_moving_indication |= (1
   ui8_tx_buffer [6] = ui8_crc;
 
   // send the package over UART
-  HAL_UART_Transmit_DMA(&huart1, (uint8_t *)&ui8_tx_buffer, 12);
+  uart_tx_start_dma((uint8_t *)&ui8_tx_buffer, 12, UART_TxCpltCallback, UART_ErrorCallback);
 }
 
 /********************************************************************************************/
@@ -210,12 +212,12 @@ void check_message(MotorState_t* MS_D, MotorParams_t* MP_D)
 				     }
 
      if(lcd_configuration_variables.ui8_light){
-    	 HAL_GPIO_WritePin(LIGHT_GPIO_Port, LIGHT_Pin, GPIO_PIN_SET);
-    	 HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+    	 gpio_set(LIGHT_GPIO_Port, LIGHT_Pin);
+    	 gpio_set(LED_GPIO_Port, LED_Pin);
      }
      else{
-    	 HAL_GPIO_WritePin(LIGHT_GPIO_Port, LIGHT_Pin, GPIO_PIN_RESET);
-    	 HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+    	 gpio_reset(LIGHT_GPIO_Port, LIGHT_Pin);
+    	 gpio_reset(LED_GPIO_Port, LED_Pin);
      }
 
      display_update(MS_D);

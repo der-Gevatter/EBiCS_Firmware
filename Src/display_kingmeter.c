@@ -23,8 +23,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "config.h"
 #include "main.h"
 #include "display_kingmeter.h"
-#include "stm32f1xx_hal.h"
 #include "print.h"
+#include "uart_irq_layer.h"
+#include "gpio_cmsis.h"
 
 #if (DISPLAY_TYPE & DISPLAY_TYPE_KINGMETER|| DISPLAY_TYPE & DISPLAY_TYPE_DEBUG)
 
@@ -34,7 +35,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define RXSTATE_MSGBODY     2
 #define RXSTATE_DONE        3
 uint8_t FirstRunFlag = 0;
-extern UART_HandleTypeDef huart1;
 
 
 #if (DISPLAY_TYPE == DISPLAY_TYPE_KINGMETER_618U)
@@ -199,20 +199,21 @@ void KingMeter_Init (KINGMETER_t* KM_ctx)
 
 #if (DISPLAY_TYPE == DISPLAY_TYPE_KINGMETER_618U)
     //Start UART with DMA
-    if (HAL_UART_Receive_DMA(&huart1, (uint8_t *)KM_ctx->RxBuff, KM_MAX_RXBUFF) != HAL_OK)
-     {
- 	   Error_Handler();
-     }
+    uart_rx_start_circular((uint8_t *)KM_ctx->RxBuff, KM_MAX_RXBUFF);
+    if (!(DMA1_Channel5->CCR & DMA_CCR_EN))
+    {
+ 	  Error_Handler();
+    }
 #endif
 
 #if (DISPLAY_TYPE == DISPLAY_TYPE_KINGMETER_901U|| DISPLAY_TYPE & DISPLAY_TYPE_DEBUG)
     //Start UART with DMA
-    if (HAL_UART_Receive_DMA(&huart1, (uint8_t *)KM_ctx->RxBuff, 64) != HAL_OK)
-     {
- 	   Error_Handler();
-     }
+    uart_rx_start_circular((uint8_t *)KM_ctx->RxBuff, 64);
+    if (!(DMA1_Channel5->CCR & DMA_CCR_EN))
+    {
+    	Error_Handler();
+    }
 #endif
-   // HAL_UART_Transmit_DMA(&huart1, (uint8_t *)&buffer, KM_MAX_RXBUFF);
 }
 
 
@@ -315,8 +316,7 @@ static void KM_618U_Service(KINGMETER_t* KM_ctx)
     {
 
         // Buffer ueber DMA senden
-        HAL_UART_Transmit_DMA(&huart1, (uint8_t *)&TxBuffer, KM_MAX_TXBUFF);
-       // HAL_Delay(6);
+        uart_tx_start_dma((uint8_t *)&TxBuffer, KM_MAX_TXBUFF, UART_TxCpltCallback, UART_ErrorCallback);
 
         KM_ctx->RxState = RXSTATE_STARTCODE;
 
@@ -374,22 +374,15 @@ static void KM_901U_Service(KINGMETER_t* KM_ctx)
     if(recent_pointer_position>last_pointer_position){
     	Rx_message_length=recent_pointer_position-last_pointer_position;
     	//printf_("groesser %d, %d, %d \n ",recent_pointer_position,last_pointer_position, Rx_message_length);
-    	//HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+    	//gpio_set(LED_GPIO_Port, LED_Pin);
     	memcpy(KM_Message,KM_ctx->RxBuff+last_pointer_position,Rx_message_length);
-    	//HAL_UART_Transmit(&huart3, (uint8_t *)&KM_Message, Rx_message_length,50);
 	}
     else {
     	Rx_message_length=recent_pointer_position+64-last_pointer_position;
      	memcpy(KM_Message,KM_ctx->RxBuff+last_pointer_position,64-last_pointer_position);
         memcpy(KM_Message+64-last_pointer_position,KM_ctx->RxBuff,recent_pointer_position);
-      //  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
-
-
     }
     last_pointer_position=recent_pointer_position;
-    //HAL_UART_Transmit(&huart3, (uint8_t *)&KM_Message, Rx_message_length,50);
-
-
 
 
             	CheckSum = 0x0000;
@@ -404,8 +397,6 @@ static void KM_901U_Service(KINGMETER_t* KM_ctx)
     			            case 0x52:      // Operation mode
     			            	if(!CheckSum) //low-byte and high-byte
     			            		{
-
-    			            		//HAL_UART_Transmit(&huart3, (uint8_t *)&KM_Message, Rx_message_length,50);
     			                // Decode Rx message
 
     			                KM_ctx->Rx.AssistLevel        =  KM_Message[4];                 // 0..255
@@ -533,8 +524,7 @@ static void KM_901U_Service(KINGMETER_t* KM_ctx)
     			            TxBuffer[TxCnt+2] = 0x0D;
     			            TxBuffer[TxCnt+3] = 0x0A;
 
-    			            HAL_UART_Transmit_DMA(&huart1, (uint8_t *)&TxBuffer, TxCnt+4);
-    			            //HAL_UART_Transmit(&huart3, (uint8_t *)&TxBuffer, TxCnt+4,50);
+    			            uart_tx_start_dma((uint8_t *)&TxBuffer, TxCnt+4, UART_TxCpltCallback, UART_ErrorCallback);
     			            //printf_("%d, %d \n ",TxCnt+4,KM_Message[2]);
     			        }
 

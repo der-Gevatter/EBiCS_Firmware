@@ -39,8 +39,12 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f1xx_hal.h"
-#include "init.h"
-
+#include "sysclock_cmsis.h"
+#include "gpio_cmsis.h"
+#include "uart_cmsis.h"
+#include "uart_irq_layer.h"
+#include "systick.h"
+#include <stdio.h>
 
 
 
@@ -141,6 +145,7 @@ int8_t i8_reverse_flag = 1; //for temporaribly reverse direction
 uint8_t ui8_KV_detect_flag = 0; //for getting the KV of the motor after auto angle detect
 uint16_t ui16_KV_detect_counter = 0; //for getting timing of the KV detect
 int16_t ui32_KV = 0;
+uint32_t BaudRate;
 
 
 volatile uint8_t ui8_adc_offset_done_flag=0;
@@ -279,13 +284,11 @@ int16_t power;										//recent power output
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_DMA_Init(void);
-static void MX_USART1_UART_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
-int16_t T_NTC(uint16_t ADC);
 void init_watchdog(void);
 void MX_IWDG_Init(void);
 void get_internal_temp_offset(void);
@@ -313,9 +316,6 @@ int32_t speed_to_tics (uint8_t speed);
 int8_t tics_to_speed (uint32_t tics);
 int16_t internal_tics_to_speedx100 (uint32_t tics);
 int16_t external_tics_to_speedx100 (uint32_t tics);
-
-
-
 
 
 /* USER CODE END PFP */
@@ -354,10 +354,18 @@ int main(void)
 	/* USER CODE END SysInit */
 
 	/* Initialize all configured peripherals */
-	MX_GPIO_Init_CMSIS();
+	GPIO_Init_CMSIS();
 	MX_DMA_Init();
-	MX_USART1_UART_Init();
-
+	//MX_USART1_UART_Init();
+	MX_USART1_MspInit_CMSIS();
+#if ((DISPLAY_TYPE & DISPLAY_TYPE_KINGMETER) ||DISPLAY_TYPE==DISPLAY_TYPE_KUNTENG||DISPLAY_TYPE==DISPLAY_TYPE_EBiCS||DISPLAY_TYPE==DISPLAY_TYPE_NO2 || DISPLAY_TYPE==DISPLAY_TYPE_BAFANG_850_860)
+		BaudRate = 9600;
+#elif (DISPLAY_TYPE == DISPLAY_TYPE_BAFANG_LCD)
+		BaudRate = 1200;
+#else
+		BaudRate = 56000;
+#endif
+	USART1_Config(BaudRate, SystemCoreClock);
 
 	//initialize MS struct.
 	MS.hall_angle_detect_flag=1;
@@ -503,7 +511,7 @@ int main(void)
 
 	CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE);//Disable PWM
 
-	HAL_Delay(500); //wait for stable conditions
+	delay_ms(500); //wait for stable conditions
 
 	for(i=0;i<32;i++){
 		while(!ui8_adc_regular_flag){}
@@ -540,7 +548,7 @@ int main(void)
 
 #if defined (ADC_BRAKE)
 
-	while ((adcData[5]>ui16_throttle_offset)&&(adcData[1]>(THROTTLE_MAX-ui16_throttle_offset))){HAL_Delay(200);
+	while ((adcData[5]>ui16_throttle_offset)&&(adcData[1]>(THROTTLE_MAX-ui16_throttle_offset))){delay_ms(200);
 	HAL_IWDG_Refresh(&hiwdg);
 	y++;
 	if(y==35) autodetect();
@@ -553,7 +561,7 @@ int main(void)
 
 	while ((!HAL_GPIO_ReadPin(Brake_GPIO_Port, Brake_Pin))&&(adcData[1]>(ui16_throttle_offset+20))){
 		HAL_IWDG_Refresh(&hiwdg);
-		HAL_Delay(200);
+		delay_ms(200);
 		y++;
 		if(y==35) autodetect();
 	}
@@ -1111,8 +1119,8 @@ int main(void)
 				i=0;
 				while (buffer[i] != '\0')
 				{i++;}
-				HAL_UART_Transmit_DMA(&huart1, (uint8_t *)&buffer, i);
-
+				//HAL_UART_Transmit_DMA(&huart1, (uint8_t *)&buffer, i);
+				uart_tx_start_dma((uint8_t *)&buffer, i, UART_TxCpltCallback, UART_ErrorCallback);
 
 				ui8_print_flag=0;
 
@@ -1581,34 +1589,6 @@ int main(void)
 
 	}
 
-	/* USART1 init function */
-	static void MX_USART1_UART_Init(void)
-	{
-
-		huart1.Instance = USART1;
-
-#if ((DISPLAY_TYPE & DISPLAY_TYPE_KINGMETER) ||DISPLAY_TYPE==DISPLAY_TYPE_KUNTENG||DISPLAY_TYPE==DISPLAY_TYPE_EBiCS||DISPLAY_TYPE==DISPLAY_TYPE_NO2 || DISPLAY_TYPE==DISPLAY_TYPE_BAFANG_850_860)
-		huart1.Init.BaudRate = 9600;
-#elif (DISPLAY_TYPE == DISPLAY_TYPE_BAFANG_LCD)
-		huart1.Init.BaudRate = 1200; 
-#else
-		huart1.Init.BaudRate = 57600;
-#endif
-
-
-		huart1.Init.WordLength = UART_WORDLENGTH_8B;
-		huart1.Init.StopBits = UART_STOPBITS_1;
-		huart1.Init.Parity = UART_PARITY_NONE;
-		huart1.Init.Mode = UART_MODE_TX_RX;
-		huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-		huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-		if (HAL_UART_Init(&huart1) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-		__HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
-	}
-
 	/**
 	 * Enable DMA controller clock
 	 */
@@ -1920,12 +1900,14 @@ int main(void)
 
 	}
 
-	void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
+	//void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
+	void UART_TxCpltCallback(void)
 	{
 		ui8_UART_TxCplt_flag=1;
 	}
 
-	void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {
+	//void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {
+	void UART_ErrorCallback(void) {
 #if (DISPLAY_TYPE & DISPLAY_TYPE_KINGMETER)
 		KingMeter_Init (&KM);
 #endif
@@ -2263,11 +2245,11 @@ int main(void)
 		MS.i_q_setpoint= 0;
 		//	uint8_t zerocrossing = 0;
 		//	q31_t diffangle = 0;
-		HAL_Delay(5);
+		delay_ms(5);
 		for (i = 0; i < 1080; i++) {
 			HAL_IWDG_Refresh(&hiwdg);
 			q31_rotorposition_absolute += 11930465; //drive motor in open loop with steps of 1 deg
-			HAL_Delay(5);
+			delay_ms(5);
 			//printf_("%d, %d, %d, %d\n", temp3>>16,temp4>>16,temp5,temp6);
 
 			if (ui8_hall_state_old != ui8_hall_state) {
@@ -2356,14 +2338,14 @@ int main(void)
 
 		MS.hall_angle_detect_flag = 1;
 
-		HAL_Delay(5);
+		delay_ms(5);
 		ui8_KV_detect_flag = 30;
 
 
 	}
 
 	void get_standstill_position(){
-		HAL_Delay(100);
+		delay_ms(100);
 		HAL_TIM_IC_CaptureCallback(&htim2); //read in initial rotor position
 
 		switch (ui8_hall_state) {

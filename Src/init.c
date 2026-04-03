@@ -9,140 +9,20 @@
 #include "stm32f103x6.h"
 #include "main.h"
 
-void SystemClock_Config_CMSIS(void)
-{
 
-    /* 1) Enable HSI and wait ready */
-    RCC->CR |= RCC_CR_HSION;
-    while (!(RCC->CR & RCC_CR_HSIRDY)) {}
 
-    /* 2) Configure PLL: source = HSI/2, PLLMUL = x16
-       PLLSRC bit = 0 selects HSI/2; PLLMUL bits: PLLMUL[3:0] = 1110 => x16 */
-    RCC->CFGR &= ~(RCC_CFGR_PLLSRC | RCC_CFGR_PLLMULL);
-    /* PLLSRC = 0 (HSI/2) implicit; set PLLMULL = 14 (x16) */
-    RCC->CFGR |= (RCC_CFGR_PLLMULL16);
+/* ----------------- Example usage -----------------
+   Call at startup:
+     MX_USART1_DMA_Init_CMSIS();
+     USART1_Config(115200, PCLK2_HZ); // e.g., PCLK2_HZ = 72MHz if APB2 at 72MHz
+     USART1_Start_RX_DMA_Circular();
 
-    /* 3) Enable PLL and wait ready */
-    RCC->CR |= RCC_CR_PLLON;
-    while (!(RCC->CR & RCC_CR_PLLRDY)) {}
+   To send:
+     USART1_Start_TX_DMA(tx_buf, len);
+   Optionally wait for transfer complete via DMA interrupt (TC flag) or poll DMA1->ISR.
+*/
 
-    /* 4) Configure Flash latency and enable Prefetch buffer */
-    FLASH->ACR |= FLASH_ACR_PRFTBE;
-    FLASH->ACR &= ~FLASH_ACR_LATENCY;
-    FLASH->ACR |= FLASH_ACR_LATENCY_2; /* 2 wait states for 64MHz */
 
-    /* 5) Select PLL as system clock */
-    RCC->CFGR &= ~RCC_CFGR_SW;
-    RCC->CFGR |= RCC_CFGR_SW_PLL;
-    while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) {}
-
-    /* 6) Set AHB, APB1, APB2 prescalers
-       AHB = SYSCLK /1  (HPRE = 0)
-       APB2 = HCLK /1  (PPRE2 = 0)
-       APB1 = HCLK /2  (PPRE1 = 4 => DIV2)
-    */
-    RCC->CFGR &= ~(RCC_CFGR_HPRE | RCC_CFGR_PPRE1 | RCC_CFGR_PPRE2);
-    RCC->CFGR |= RCC_CFGR_PPRE1_DIV2; /* APB1 = HCLK/2 */
-    /* APB2 default DIV1, AHB default DIV1 */
-
-    /* 7) Configure ADC prescaler: ADCCLK = PCLK2 / 6
-       For STM32F1: ADC prescaler is in RCC->CFGR (ADCPRE bits) as RCC_CFGR_ADCPRE_x.
-    */
-    /* Clear ADCPRE bits then set to /6 (bits encoding: 10 -> /6) */
-    RCC->CFGR &= ~RCC_CFGR_ADCPRE;
-    RCC->CFGR |= RCC_CFGR_ADCPRE_DIV6;
-
-	/* 8) Update SystemCoreClock Variable */
-	SystemCoreClockUpdate();
-
-    /* 9) Enable peripheral clocks if needed elsewhere (Systick uses HCLK) */
-    /* Systick: configure to 1ms tick */
-    SysTick->LOAD = (SystemCoreClock / 1000U) - 1U; /* SystemCoreClock should be 64MHz */
-    SysTick->VAL = 0;
-    SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk;
-
-    /* Set SysTick priority */
-    NVIC_SetPriority(SysTick_IRQn, 0);
-}
-
-/* Helper: configure single pin as input pull-up */
-static void gpio_config_input_pu(GPIO_TypeDef *GPIOx, uint32_t pin_num)
-{
-    uint32_t shift = (pin_num & 7) * 4;
-    if (pin_num < 8) {
-        GPIOx->CRL &= ~(0xFUL << shift);
-        GPIOx->CRL |= (0x8UL << shift); /* MODE=00, CNF=10 -> input pull-up/pull-down */
-    } else {
-        GPIOx->CRH &= ~(0xFUL << shift);
-        GPIOx->CRH |= (0x8UL << shift);
-    }
-    GPIOx->ODR |= (1U << pin_num); /* pull-up */
-}
-
-/* Helper: configure single pin as output push-pull, 2MHz (low speed) */
-static void gpio_config_output_pp(GPIO_TypeDef *GPIOx, uint32_t pin_num)
-{
-    uint32_t shift = (pin_num & 7) * 4;
-    if (pin_num < 8) {
-        GPIOx->CRL &= ~(0xFUL << shift);
-        GPIOx->CRL |= (0x2UL << shift); /* MODE=10 (2MHz), CNF=00 (GP push-pull) */
-    } else {
-        GPIOx->CRH &= ~(0xFUL << shift);
-        GPIOx->CRH |= (0x2UL << shift);
-    }
-}
-
-/* GPIO init function */
-void MX_GPIO_Init_CMSIS(void)
-{
-    /* Enable clocks for GPIOA, GPIOB, GPIOC and AFIO */
-    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN | RCC_APB2ENR_IOPBEN | RCC_APB2ENR_IOPCEN | RCC_APB2ENR_AFIOEN;
-    (void)RCC->APB2ENR;
-
-    /* Hall_1, Hall_2 and Hall_3 input pull-up */
-    gpio_config_input_pu(Hall_1_GPIO_Port, Hall_1_Pin);
-    gpio_config_input_pu(Hall_2_GPIO_Port, Hall_2_Pin);
-    gpio_config_input_pu(Hall_3_GPIO_Port, Hall_3_Pin);
-
-    /* Brake pin input pull-up */
-    gpio_config_input_pu(Brake_GPIO_Port, Brake_Pin);
-
-    /* Speed_EXTI5 and PAS_EXTI8 as input pull-up */
-    gpio_config_input_pu(Speed_EXTI5_GPIO_Port, Speed_EXTI5_Pin);
-    gpio_config_input_pu(PAS_GPIO_Port, PAS_EXTI8_Pin);
-
-    /* Set LED output low */
-    LED_GPIO_Port->ODR &= ~(1U << LED_Pin);
-
-    /* LED pin output push-pull, low speed */
-    gpio_config_output_pp(LED_GPIO_Port, LED_Pin);
-
-    /* LIGHT pin output push-pull */
-    gpio_config_output_pp(LIGHT_GPIO_Port, LIGHT_Pin);
-
-    /* BRAKE_LIGHT pin output push-pull */
-    gpio_config_output_pp(BRAKE_LIGHT_GPIO_Port, BRAKE_LIGHT_Pin);
-
-    /* Map EXTI lines to port B for lines 5 and 8 via AFIO->EXTICR */
-    /* EXTI5 is in EXTICR[1] (lines 4..7), position for line5: bits [7:4] */
-    AFIO->EXTICR[1] &= ~(0xFUL << 4);
-    AFIO->EXTICR[1] |= (0x1UL << 4); /* 0x1 = Port B */
-
-    /* EXTI8 is in EXTICR[2] (lines 8..11), position for line8: bits [3:0] */
-    AFIO->EXTICR[2] &= ~(0xFUL << 0);
-    AFIO->EXTICR[2] |= (0x1UL << 0); /* Port B */
-
-    /* Unmask EXTI lines and set falling trigger only */
-    EXTI->IMR |= (1U << Speed_EXTI5_Pin) | (1U << PAS_EXTI8_Pin);
-    EXTI->FTSR |= (1U << Speed_EXTI5_Pin) | (1U << PAS_EXTI8_Pin);
-    EXTI->RTSR &= ~((1U << Speed_EXTI5_Pin) | (1U << PAS_EXTI8_Pin));
-
-    /* Set NVIC priority and enable EXTI9_5_IRQn (covers lines 5..9; line 8 included) */
-    uint32_t prio = 2;
-    NVIC_SetPriority(EXTI9_5_IRQn, (prio << (8 - __NVIC_PRIO_BITS)));
-    NVIC_EnableIRQ(EXTI9_5_IRQn);
-
-}
 
 
 void MX_ADC1_Init_CMSIS(uint16_t offset)

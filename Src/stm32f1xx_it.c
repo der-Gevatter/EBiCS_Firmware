@@ -182,17 +182,17 @@ void PendSV_Handler(void)
 /**
 * @brief This function handles System tick timer.
 */
-void SysTick_Handler(void)
+/*void SysTick_Handler(void)
 {
-  /* USER CODE BEGIN SysTick_IRQn 0 */
+   USER CODE BEGIN SysTick_IRQn 0
 
-  /* USER CODE END SysTick_IRQn 0 */
+   USER CODE END SysTick_IRQn 0
   HAL_IncTick();
   HAL_SYSTICK_IRQHandler();
-  /* USER CODE BEGIN SysTick_IRQn 1 */
+   USER CODE BEGIN SysTick_IRQn 1
 
-  /* USER CODE END SysTick_IRQn 1 */
-}
+   USER CODE END SysTick_IRQn 1
+}*/
 
 /******************************************************************************/
 /* STM32F1xx Peripheral Interrupt Handlers                                    */
@@ -248,30 +248,32 @@ void DMA1_Channel1_IRQHandler(void)
 /**
 * @brief This function handles DMA1 channel4 global interrupt.
 */
+/*
 void DMA1_Channel4_IRQHandler(void)
 {
-  /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
+   USER CODE BEGIN DMA1_Channel4_IRQn 0
 
-  /* USER CODE END DMA1_Channel4_IRQn 0 */
+   USER CODE END DMA1_Channel4_IRQn 0
   HAL_DMA_IRQHandler(&hdma_usart1_tx);
-  /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
+   USER CODE BEGIN DMA1_Channel4_IRQn 1
 
-  /* USER CODE END DMA1_Channel4_IRQn 1 */
+   USER CODE END DMA1_Channel4_IRQn 1
 }
 
-/**
+*
 * @brief This function handles DMA1 channel5 global interrupt.
-*/
+
 void DMA1_Channel5_IRQHandler(void)
 {
-  /* USER CODE BEGIN DMA1_Channel5_IRQn 0 */
+   USER CODE BEGIN DMA1_Channel5_IRQn 0
 
-  /* USER CODE END DMA1_Channel5_IRQn 0 */
+   USER CODE END DMA1_Channel5_IRQn 0
   HAL_DMA_IRQHandler(&hdma_usart1_rx);
-  /* USER CODE BEGIN DMA1_Channel5_IRQn 1 */
+   USER CODE BEGIN DMA1_Channel5_IRQn 1
 
-  /* USER CODE END DMA1_Channel5_IRQn 1 */
+   USER CODE END DMA1_Channel5_IRQn 1
 }
+*/
 
 /**
 * @brief This function handles ADC1 and ADC2 global interrupts.
@@ -358,7 +360,7 @@ void TIM3_IRQHandler(void)
 /**
 * @brief This function handles USART1 global interrupt.
 */
-void USART1_IRQHandler(void)
+/*void USART1_IRQHandler(void)
 {
 	  if (huart1.Instance->SR & UART_FLAG_IDLE)
 	  {
@@ -382,7 +384,7 @@ void USART1_IRQHandler(void)
 	  {
 	    HAL_UART_IRQHandler(&huart1);
 	  }
-}
+}*/
 
 /* USER CODE BEGIN 1 */
 

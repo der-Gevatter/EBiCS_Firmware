@@ -393,6 +393,7 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
   }
 
 }
+/*
 
 void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 {
@@ -400,17 +401,17 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
   GPIO_InitTypeDef GPIO_InitStruct;
   if(huart->Instance==USART1)
   {
-  /* USER CODE BEGIN USART1_MspInit 0 */
+   USER CODE BEGIN USART1_MspInit 0
 
-  /* USER CODE END USART1_MspInit 0 */
-    /* Peripheral clock enable */
+   USER CODE END USART1_MspInit 0
+     Peripheral clock enable
     __HAL_RCC_USART1_CLK_ENABLE();
 
   
-    /**USART1 GPIO Configuration    
+    *USART1 GPIO Configuration
     PB6     ------> USART1_TX
     PB7     ------> USART1_RX 
-    */
+
     GPIO_InitStruct.Pin = GPIO_PIN_6;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
@@ -423,8 +424,8 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
     __HAL_AFIO_REMAP_USART1_ENABLE();
 
-    /* USART1 DMA Init */
-    /* USART1_TX Init */
+     USART1 DMA Init
+     USART1_TX Init
     hdma_usart1_tx.Instance = DMA1_Channel4;
     hdma_usart1_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
     hdma_usart1_tx.Init.PeriphInc = DMA_PINC_DISABLE;
@@ -440,7 +441,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
     __HAL_LINKDMA(huart,hdmatx,hdma_usart1_tx);
 
-    /* USART1_RX Init */
+     USART1_RX Init
     hdma_usart1_rx.Instance = DMA1_Channel5;
     hdma_usart1_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
     hdma_usart1_rx.Init.PeriphInc = DMA_PINC_DISABLE;
@@ -456,10 +457,10 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
     __HAL_LINKDMA(huart,hdmarx,hdma_usart1_rx);
 
-    /* USART1 interrupt Init */
+     USART1 interrupt Init
     HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(USART1_IRQn);
-  /* USER CODE BEGIN USART1_MspInit 1 */
+   USER CODE BEGIN USART1_MspInit 1
 
     HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
@@ -469,10 +470,11 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
 
 
-  /* USER CODE END USART1_MspInit 1 */
+   USER CODE END USART1_MspInit 1
   }
 
 }
+*/
 
 void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
 {

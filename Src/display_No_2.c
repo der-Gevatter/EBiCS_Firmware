@@ -23,12 +23,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "config.h"
 #include "main.h"
 #include "display_No_2.h"
-#include "stm32f1xx_hal.h"
+#include "uart_irq_layer.h"
+#include "gpio_cmsis.h"
 #include "print.h"
 
-
-
-extern UART_HandleTypeDef huart1;
 #if (DISPLAY_TYPE == DISPLAY_TYPE_NO2)
 
 void No2_Service(No2_t* No2_ctx);
@@ -53,7 +51,8 @@ uint8_t ui8_RxLength=1;
 
 void No2_Init (No2_t* No2_ctx){
     //Start UART with DMA
-    if (HAL_UART_Receive_DMA(&huart1, (uint8_t *)No2_ctx->RxBuff, 64) != HAL_OK)
+	uart_rx_start_circular((uint8_t *)No2_ctx->RxBuff, 64);
+	if (!(DMA1_Channel5->CCR & DMA_CCR_EN))
      {
  	   Error_Handler();
      }
@@ -83,20 +82,18 @@ void No2_Service(No2_t* No2_ctx)
     if(recent_pointer_position>last_pointer_position){
     	Rx_message_length=recent_pointer_position-last_pointer_position;
     	//printf_("groesser %d, %d, %d \n ",recent_pointer_position,last_pointer_position, Rx_message_length);
-    	//HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+    	//gpio_set(LED_GPIO_Port, LED_Pin);
     	memcpy(No2_Message,No2_ctx->RxBuff+last_pointer_position,Rx_message_length);
-    	//HAL_UART_Transmit(&huart3, (uint8_t *)&No2_Message, Rx_message_length,50);
 	}
     else {
     	Rx_message_length=recent_pointer_position+64-last_pointer_position;
      	memcpy(No2_Message,No2_ctx->RxBuff+last_pointer_position,64-last_pointer_position);
         memcpy(No2_Message+64-last_pointer_position,No2_ctx->RxBuff,recent_pointer_position);
-      //  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+        //gpio_reset(LED_GPIO_Port, LED_Pin);
 
 
     }
     last_pointer_position=recent_pointer_position;
-    //HAL_UART_Transmit(&huart3, (uint8_t *)&No2_Message, Rx_message_length,50);
 
     if(No2_Message[19]==calculate_checksum(No2_Message, 20)){
     	//to do
@@ -128,7 +125,7 @@ void No2_Service(No2_t* No2_ctx)
     	TxBuffer[9]=lowByte(No2_ctx->Tx.Wheeltime_ms);
 
     	TxBuffer[13]=calculate_checksum(TxBuffer, 14);
-    	HAL_UART_Transmit(&huart1, (uint8_t *)&TxBuffer,14,50);
+    	uart_tx_blocking((uint8_t *)&TxBuffer,14,50);
     }
 
  }
