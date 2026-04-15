@@ -43,6 +43,7 @@
 #include "gpio_cmsis.h"
 #include "uart_cmsis.h"
 #include "uart_irq_layer.h"
+#include "adc_cmsis.h"
 #include "systick.h"
 #include <stdio.h>
 
@@ -86,9 +87,9 @@
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc1;
+//ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
-DMA_HandleTypeDef hdma_adc1;
+//DMA_HandleTypeDef hdma_adc1;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
@@ -236,9 +237,6 @@ uint16_t VirtAddVarTab[NB_OF_VAR] = { 	EEPROM_POS_HALL_ORDER,
 		EEPROM_HALL_60
 };
 
-enum state {Stop, SixStep, Regen, Running, BatteryCurrentLimit, Interpolation, PLL, IdleRun};
-enum state SystemState;
-
 #define iabs(x) (((x) >= 0)?(x):-(x))
 #define sign(x) (((x) >= 0)?(1):(-1))
 
@@ -282,11 +280,7 @@ int16_t power;										//recent power output
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
-void SystemClock_Config(void);
-static void MX_DMA_Init(void);
 static void MX_TIM1_Init(void);
-static void MX_ADC1_Init(void);
-static void MX_ADC2_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 void init_watchdog(void);
@@ -308,7 +302,8 @@ void bafang_update(void);
 #endif
 
 static void dyn_adc_state(q31_t angle);
-static void set_inj_channel(char state);
+void dyn_adc_state(q31_t angle);
+void set_inj_channel(char state);
 void get_standstill_position();
 q31_t speed_PLL (q31_t ist, q31_t soll, uint8_t speedadapt);
 int32_t map (int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max);
@@ -332,9 +327,6 @@ int16_t external_tics_to_speedx100 (uint32_t tics);
 int main(void)
 {
 	/* USER CODE BEGIN 1 */
-
-
-
 	/* USER CODE END 1 */
 
 	/* MCU Configuration----------------------------------------------------------*/
@@ -342,22 +334,18 @@ int main(void)
 	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
 	HAL_Init();
 
-	/* USER CODE BEGIN Init */
-
-	/* USER CODE END Init */
+	/* Set priority grouping to [0..3], [0..3] */
+	NVIC_SetPriorityGrouping(0x03);
 
 	/* Configure the system clock */
 	SystemClock_Config_CMSIS();
 
-	/* USER CODE BEGIN SysInit */
-
-	/* USER CODE END SysInit */
-
-	/* Initialize all configured peripherals */
+	/* Initialize GPIO's */
 	GPIO_Init_CMSIS();
-	MX_DMA_Init();
-	//MX_USART1_UART_Init();
+
+	/* Initialize USART1 */
 	MX_USART1_MspInit_CMSIS();
+
 #if ((DISPLAY_TYPE & DISPLAY_TYPE_KINGMETER) ||DISPLAY_TYPE==DISPLAY_TYPE_KUNTENG||DISPLAY_TYPE==DISPLAY_TYPE_EBiCS||DISPLAY_TYPE==DISPLAY_TYPE_NO2 || DISPLAY_TYPE==DISPLAY_TYPE_BAFANG_850_860)
 		BaudRate = 9600;
 #elif (DISPLAY_TYPE == DISPLAY_TYPE_BAFANG_LCD)
@@ -365,6 +353,7 @@ int main(void)
 #else
 		BaudRate = 56000;
 #endif
+	/* Configure USART1 */
 	USART1_Config(BaudRate, SystemCoreClock);
 
 	//initialize MS struct.
@@ -417,31 +406,16 @@ int main(void)
 	EE_Init();
 	HAL_FLASH_Lock();
 
-	MX_ADC1_Init();
-	/* Run the ADC calibration */
-	if (HAL_ADCEx_Calibration_Start(&hadc1) != HAL_OK)
-	{
-		/* Calibration Error */
-		Error_Handler();
-	}
-	MX_ADC2_Init();
-	/* Run the ADC calibration */
-	if (HAL_ADCEx_Calibration_Start(&hadc2) != HAL_OK)
-	{
-		/* Calibration Error */
-		Error_Handler();
-	}
+	/* Init ADC1 incl. calibration */
+	ADC1_CMSIS_Init();
 
-	/* USER CODE BEGIN 2 */
-	SET_BIT(ADC1->CR2, ADC_CR2_JEXTTRIG);//external trigger enable
-	__HAL_ADC_ENABLE_IT(&hadc1,ADC_IT_JEOC);
-	SET_BIT(ADC2->CR2, ADC_CR2_JEXTTRIG);//external trigger enable
-	__HAL_ADC_ENABLE_IT(&hadc2,ADC_IT_JEOC);
+	/* Init ADC2 incl. calibration */
+	ADC2_CMSIS_Init();
+
+	/* Start DMA in circular mode */
+	ADC1_DMA_Init_Circular((uint32_t*)adcData, 8);
 
 
-	//HAL_ADC_Start_IT(&hadc1);
-	HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*)adcData, 8);
-	HAL_ADC_Start_IT(&hadc2);
 	MX_TIM1_Init(); //Hier die Reihenfolge getauscht!
 	MX_TIM2_Init();
 	MX_TIM3_Init();
@@ -1170,229 +1144,6 @@ int main(void)
 
 	}
 
-	/**
-	 * @brief System Clock Configuration
-	 * @retval None
-	 */
-	void SystemClock_Config(void)
-	{
-
-		RCC_OscInitTypeDef RCC_OscInitStruct;
-		RCC_ClkInitTypeDef RCC_ClkInitStruct;
-		RCC_PeriphCLKInitTypeDef PeriphClkInit;
-
-		/**Initializes the CPU, AHB and APB busses clocks
-		 */
-		RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-		RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-		RCC_OscInitStruct.HSICalibrationValue = 16;
-		RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-		RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI_DIV2;
-		RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16;
-		if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		/**Initializes the CPU, AHB and APB busses clocks
-		 */
-		RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-				|RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-		RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-		RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-		RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-		RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-
-		if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
-		PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV6;
-		if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		/**Configure the Systick interrupt time
-		 */
-		HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
-
-		/**Configure the Systick
-		 */
-		HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
-
-		/* SysTick_IRQn interrupt configuration */
-		HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
-	}
-
-
-	/* ADC1 init function */
-	static void MX_ADC1_Init(void)
-	{
-
-		ADC_MultiModeTypeDef multimode;
-		ADC_InjectionConfTypeDef sConfigInjected;
-		ADC_ChannelConfTypeDef sConfig;
-
-		/**Common config
-		 */
-		hadc1.Instance = ADC1;
-		hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE; //Scan muss für getriggerte Wandlung gesetzt sein
-		hadc1.Init.ContinuousConvMode = DISABLE;
-		hadc1.Init.DiscontinuousConvMode = DISABLE;
-		hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T3_TRGO;// Trigger regular ADC with timer 3 ADC_EXTERNALTRIGCONV_T1_CC1;// // ADC_SOFTWARE_START; //
-		hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-		hadc1.Init.NbrOfConversion = 8;
-		hadc1.Init.NbrOfDiscConversion = 0;
-
-
-		if (HAL_ADC_Init(&hadc1) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		/**Configure the ADC multi-mode
-		 */
-		multimode.Mode = ADC_DUALMODE_REGSIMULT_INJECSIMULT;
-		if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		/**Configure Injected Channel
-		 */
-		sConfigInjected.InjectedChannel = ADC_CHANNEL_0;
-		sConfigInjected.InjectedRank = ADC_INJECTED_RANK_1;
-		sConfigInjected.InjectedNbrOfConversion = 1;
-		sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-		sConfigInjected.ExternalTrigInjecConv = ADC_EXTERNALTRIGINJECCONV_T1_CC4; // Hier bin ich nicht sicher ob Trigger out oder direkt CC4
-		sConfigInjected.AutoInjectedConv = DISABLE; //muss aus sein
-		sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
-		sConfigInjected.InjectedOffset = ui16_ph1_offset;//1900;
-		HAL_ADC_Stop(&hadc1); //ADC muss gestoppt sein, damit Triggerquelle gesetzt werden kann.
-		if (HAL_ADCEx_InjectedConfigChannel(&hadc1, &sConfigInjected) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		/**Configure Regular Channel
-		 */
-		sConfig.Channel = ADC_CHANNEL_1; //battery voltage
-		sConfig.Rank = ADC_REGULAR_RANK_1;
-		sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;//ADC_SAMPLETIME_239CYCLES_5;
-		if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-
-		/**Configure Regular Channel
-		 */
-		sConfig.Channel = ADC_CHANNEL_4; //Connector SP: throttle input
-		sConfig.Rank = ADC_REGULAR_RANK_2;
-		sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;//ADC_SAMPLETIME_239CYCLES_5;
-		if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-		/**Configure Regular Channel
-		 */
-		sConfig.Channel = ADC_CHANNEL_0; //Phase current 1
-		sConfig.Rank = ADC_REGULAR_RANK_3;
-		sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;//ADC_SAMPLETIME_239CYCLES_5;
-		if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-		/**Configure Regular Channel
-		 */
-		sConfig.Channel = ADC_CHANNEL_11; //Phase current 2
-		sConfig.Rank = ADC_REGULAR_RANK_4;
-		sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;//ADC_SAMPLETIME_239CYCLES_5;
-		if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-		/**Configure Regular Channel
-		 */
-		sConfig.Channel = ADC_CHANNEL_10; //Phase current 3
-		sConfig.Rank = ADC_REGULAR_RANK_5;
-		sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;//ADC_SAMPLETIME_239CYCLES_5;
-		if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		/**Configure Regular Channel
-		 */
-		sConfig.Channel = ADC_CHANNEL_14;
-		sConfig.Rank = ADC_REGULAR_RANK_6; // connector AD2
-		sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;//ADC_SAMPLETIME_239CYCLES_5;
-		if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		/**Configure Regular Channel
-		 */
-		sConfig.Channel = ADC_CHANNEL_5; // connector AD1, temperature or torque input for Controller from PhoebeLiu @ aliexpress
-		sConfig.Rank = ADC_REGULAR_RANK_7;
-		sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;//ADC_SAMPLETIME_239CYCLES_5;
-		if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		/**Configure Regular Channel
-		 */
-		sConfig.Channel = ADC_CHANNEL_TEMPSENSOR; // internal STM32 temperature sensor
-		sConfig.Rank = ADC_REGULAR_RANK_8;
-		sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;//ADC_SAMPLETIME_239CYCLES_5;
-		if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-	}
-
-	/* ADC2 init function */
-	static void MX_ADC2_Init(void)
-	{
-
-		ADC_InjectionConfTypeDef sConfigInjected;
-
-		/**Common config
-		 */
-		hadc2.Instance = ADC2;
-		hadc2.Init.ScanConvMode = ADC_SCAN_ENABLE; //hier auch Scan enable?!
-		hadc2.Init.ContinuousConvMode = DISABLE;
-		hadc2.Init.DiscontinuousConvMode = DISABLE;
-		hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-		hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-		hadc2.Init.NbrOfConversion = 1;
-		if (HAL_ADC_Init(&hadc2) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		/**Configure Injected Channel
-		 */
-		sConfigInjected.InjectedChannel = ADC_CHANNEL_11;
-		sConfigInjected.InjectedRank = ADC_INJECTED_RANK_1;
-		sConfigInjected.InjectedNbrOfConversion = 1;
-		sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-		sConfigInjected.ExternalTrigInjecConv = ADC_INJECTED_SOFTWARE_START;
-		sConfigInjected.AutoInjectedConv = DISABLE;
-		sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
-		sConfigInjected.InjectedOffset = ui16_ph2_offset;//	1860;
-		if (HAL_ADCEx_InjectedConfigChannel(&hadc2, &sConfigInjected) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-	}
 	/* TIM1 init function */
 	static void MX_TIM1_Init(void)
 	{
@@ -1589,30 +1340,6 @@ int main(void)
 
 	}
 
-	/**
-	 * Enable DMA controller clock
-	 */
-	static void MX_DMA_Init(void)
-	{
-		/* DMA controller clock enable */
-		__HAL_RCC_DMA1_CLK_ENABLE();
-
-
-
-		/* DMA interrupt init */
-		/* DMA1_Channel1_IRQn interrupt configuration */
-		HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 1);
-		HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-		//  /* DMA1_Channel4_IRQn interrupt configuration */
-		//  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 3, 0);
-		//  HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
-		//  /* DMA1_Channel5_IRQn interrupt configuration */
-		//  //HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
-		//  //HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
-
-	}
-
-
 	void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	{
 		//HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
@@ -1637,16 +1364,18 @@ int main(void)
 
 
 
+/*
 	// regular ADC callback
 	void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	{
 		ui8_adc_regular_flag=1;
 
 	}
+*/
 
 	//injected ADC
 
-	void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef* hadc)
+	void ADC_InjectedConvCpltCallback(void)
 	{
 		//for oszi-check of used time in FOC procedere
 		//HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
@@ -1657,10 +1386,14 @@ int main(void)
 	  uint32_SPEED_counter=0;
 	  }*/
 
+		/* Read injected data: on F1 ADCx->JDR1 holds injected rank1 */
+	    int16_t ph1 = (int16_t)(ADC1->JDR1 & 0xFFFF);
+	    int16_t ph2 = (int16_t)(ADC2->JDR1 & 0xFFFF);
+
 		if(!ui8_adc_offset_done_flag)
 		{
-			i16_ph1_current = HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
-			i16_ph2_current = HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
+			i16_ph1_current = ph1;
+			i16_ph2_current = ph2;
 
 			ui8_adc_inj_flag=1;
 		}
@@ -1668,8 +1401,8 @@ int main(void)
 
 #ifdef DISABLE_DYNAMIC_ADC
 
-			i16_ph1_current = HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
-			i16_ph2_current = HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
+			i16_ph1_current = ph1;
+			i16_ph2_current = ph2;
 
 
 #else
@@ -1677,29 +1410,29 @@ int main(void)
 			{
 			case 1: //Phase C at high dutycycles, read from A+B directly
 			{
-				temp1=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
+				temp1=(q31_t)ph1;
 				i16_ph1_current = temp1 ;
 
-				temp2=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
+				temp2=(q31_t)ph2;
 				i16_ph2_current = temp2;
 			}
 			break;
 			case 2: //Phase A at high dutycycles, read from B+C (A = -B -C)
 			{
 
-				temp2=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
+				temp2=(q31_t)ph2;
 				i16_ph2_current = temp2;
 
-				temp1=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
+				temp1=(q31_t)ph1;
 				i16_ph1_current = -i16_ph2_current-temp1;
 
 			}
 			break;
 			case 3: //Phase B at high dutycycles, read from A+C (B=-A-C)
 			{
-				temp1=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
+				temp1=(q31_t)ph1;
 				i16_ph1_current = temp1 ;
-				temp2=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
+				temp2=(q31_t)ph2;
 				i16_ph2_current = -i16_ph1_current-temp2;
 			}
 			break;
@@ -2179,7 +1912,7 @@ int main(void)
 		}
 	}
 
-	static void set_inj_channel(char state){
+	void set_inj_channel(char state){
 		switch (state)
 		{
 		case 1: //Phase C at high dutycycles, read current from phase A + B
@@ -2666,7 +2399,8 @@ void Set_Hall_Angle60(void){
 		{
 
 			printf_("watchdog reset!\n");
-			HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+			gpio_set(LED_GPIO_Port, LED_Pin);
+			//HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 			// do not continue here if reset from watchdog
 			//while(1){}
 			//__HAL_RCC_CLEAR_RESET_FLAGS();

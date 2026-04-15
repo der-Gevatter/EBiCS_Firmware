@@ -234,16 +234,18 @@ void EXTI9_5_IRQHandler(void)
 /**
 * @brief This function handles DMA1 channel1 global interrupt.
 */
+/*
 void DMA1_Channel1_IRQHandler(void)
 {
-  /* USER CODE BEGIN DMA1_Channel1_IRQn 0 */
+   USER CODE BEGIN DMA1_Channel1_IRQn 0
 
-  /* USER CODE END DMA1_Channel1_IRQn 0 */
+   USER CODE END DMA1_Channel1_IRQn 0
   HAL_DMA_IRQHandler(&hdma_adc1);
-  /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
+   USER CODE BEGIN DMA1_Channel1_IRQn 1
 
-  /* USER CODE END DMA1_Channel1_IRQn 1 */
+   USER CODE END DMA1_Channel1_IRQn 1
 }
+*/
 
 /**
 * @brief This function handles DMA1 channel4 global interrupt.
@@ -278,17 +280,19 @@ void DMA1_Channel5_IRQHandler(void)
 /**
 * @brief This function handles ADC1 and ADC2 global interrupts.
 */
+/*
 void ADC1_2_IRQHandler(void)
 {
-  /* USER CODE BEGIN ADC1_2_IRQn 0 */
+   USER CODE BEGIN ADC1_2_IRQn 0
 
-  /* USER CODE END ADC1_2_IRQn 0 */
+   USER CODE END ADC1_2_IRQn 0
   HAL_ADC_IRQHandler(&hadc1);
   HAL_ADC_IRQHandler(&hadc2);
-  /* USER CODE BEGIN ADC1_2_IRQn 1 */
+   USER CODE BEGIN ADC1_2_IRQn 1
   //HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
-  /* USER CODE END ADC1_2_IRQn 1 */
+   USER CODE END ADC1_2_IRQn 1
 }
+*/
 
 /**
 * @brief This function handles TIM1 update interrupt.

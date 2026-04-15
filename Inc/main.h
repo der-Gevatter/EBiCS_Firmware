@@ -51,44 +51,44 @@
 
 /* Private define ------------------------------------------------------------*/
 
-#define Hall_1_Pin 15
+#define Hall_1_Pin GPIO_PIN_15
 #define Hall_1_GPIO_Port GPIOA
 #define Hall_1_EXTI_IRQn EXTI15_IRQn
-#define Hall_2_Pin 3
+#define Hall_2_Pin GPIO_PIN_3
 #define Hall_2_GPIO_Port GPIOB
 #define Hall_2_EXTI_IRQn EXTI3_IRQn
-#define Hall_3_Pin 10
+#define Hall_3_Pin GPIO_PIN_10
 #define Hall_3_GPIO_Port GPIOB
 #define Hall_3_EXTI_IRQn EXTI10_IRQn
-#define Throttle_Pin 4
+#define Throttle_Pin GPIO_PIN_4
 #define Throttle_GPIO_Port GPIOA
-#define Phase_Current1_Pin 0
+#define Phase_Current1_Pin GPIO_PIN_0
 #define Phase_Current1_GPIO_Port GPIOA
-#define Phase_Current_2_Pin 1
+#define Phase_Current_2_Pin GPIO_PIN_1
 #define Phase_Current_2_GPIO_Port GPIOC
-#define Phase_Current_3_Pin 0
+#define Phase_Current_3_Pin GPIO_PIN_0
 #define Phase_Current_3_GPIO_Port GPIOC
-#define Temperature_Pin 2
+#define Temperature_Pin GPIO_PIN_2
 #define Temperature_GPIO_Port GPIOC
-#define LED_Pin 2
+#define LED_Pin GPIO_PIN_2
 #define LED_GPIO_Port GPIOB
-#define LIGHT_Pin 9
+#define LIGHT_Pin GPIO_PIN_9
 #define LIGHT_GPIO_Port GPIOB
-#define BRAKE_LIGHT_Pin 3
+#define BRAKE_LIGHT_Pin GPIO_PIN_3
 #define BRAKE_LIGHT_GPIO_Port GPIOC
-#define PAS_Pin 8
+#define PAS_Pin GPIO_PIN_8
 #define PAS_GPIO_Port GPIOB
-#define Brake_Pin 11  // put a 15 here for new generation controllers!
+#define Brake_Pin GPIO_PIN_11  // put a 15 here for new generation controllers!
 #define Brake_GPIO_Port GPIOA
-#define Speed_EXTI5_Pin 5
+#define Speed_EXTI5_Pin GPIO_PIN_5
 #define Speed_EXTI5_GPIO_Port GPIOB
 #define Speed_EXTI5_EXTI_IRQn EXTI9_5_IRQn
-#define PAS_EXTI8_Pin 8
+#define PAS_EXTI8_Pin GPIO_PIN_8
 #define PAS_EXTI8_GPIO_Port GPIOB
 #define PAS_EXTI8_EXTI_IRQn EXTI9_5_IRQn
-#define UART_TX_Pin 6
+#define UART_TX_Pin GPIO_PIN_6
 #define UART_TX_GPIO_Port GPIOB
-#define UART_RX_Pin 7
+#define UART_RX_Pin GPIO_PIN_7
 #define UART_RX_GPIO_Port GPIOB
 
 //#define NCTE
@@ -157,6 +157,7 @@ extern void UART_IdleItCallback(void);
 void UART_TxCpltCallback(void);
 void UART_ErrorCallback(void);
 extern void get_internal_temp_offset(void);
+void ADC_InjectedConvCpltCallback(void);
 
 typedef struct
 {
@@ -224,6 +225,9 @@ typedef struct
 
 
 }MotorParams_t;
+
+enum state {Stop, SixStep, Regen, Running, BatteryCurrentLimit, Interpolation, PLL, IdleRun};
+enum state SystemState;
 
 /* USER CODE END Private defines */
 

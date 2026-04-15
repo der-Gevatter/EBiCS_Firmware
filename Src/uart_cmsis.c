@@ -90,13 +90,13 @@ void MX_USART1_MspInit_CMSIS(void)
        DMA1_Channel5: (1,0) -> priority 1
        DMA1_Channel4: (3,1) -> map to priority 3 (or 3)
     */
-    NVIC_SetPriority(USART1_IRQn, 0);
+    NVIC_SetPriority(USART1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
     NVIC_EnableIRQ(USART1_IRQn);
 
-    NVIC_SetPriority(DMA1_Channel5_IRQn, 1);
+    NVIC_SetPriority(DMA1_Channel5_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 1, 0));
     NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 
-    NVIC_SetPriority(DMA1_Channel4_IRQn, 3);
+    NVIC_SetPriority(DMA1_Channel4_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 3, 1));
     NVIC_EnableIRQ(DMA1_Channel4_IRQn);
 }
 

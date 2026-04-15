@@ -9,52 +9,102 @@
 #include "stm32f103x6.h"
 #include "main.h"
 
-/* Helper: configure single pin as input pull-up (pin is index 0..15) */
-static void gpio_config_input_pu(GPIO_TypeDef *GPIOx, uint32_t pin_num)
+/* Helper: enable clock for Port */
+static void gpio_enable_clock_for_port(GPIO_TypeDef *port)
 {
-	if (pin_num > 15) return;
+    if (port == GPIOA) RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
+    else if (port == GPIOB) RCC->APB2ENR |= RCC_APB2ENR_IOPBEN;
+    else if (port == GPIOC) RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
+    (void)RCC->APB2ENR;
+}
 
-    uint32_t shift = (pin_num & 7) * 4;
+/* Helper: configure single pin as input pull-up (pin is index 0..15) */
+/* pin_mask must be exactly one bit (HAL format e.g. 0x0020). */
+static void gpio_config_input_pu(GPIO_TypeDef *GPIOx, uint16_t pin_mask)
+{
+    if (pin_mask == 0) return;
+    /* ensure single-bit mask */
+    if ((pin_mask & (pin_mask - 1)) != 0) return;
 
-    /* Set ODR bit first to select pull-up (ODR=1 => pull-up, ODR=0 => pull-down) */
-    GPIOx->ODR |= (1U << pin_num); /* pull-up */
+    gpio_enable_clock_for_port(GPIOx);
 
-    if (pin_num < 8) {
+    /* compute pin index 0..15 */
+    uint8_t pin = __builtin_ctz(pin_mask); // count trailing zeros
+
+    /* set ODR bit = 1 to select pull-up */
+    GPIOx->ODR |= (1U << pin);
+
+    uint32_t shift = (pin & 7) * 4;
+    if (pin < 8) {
         GPIOx->CRL &= ~(0xFUL << shift);
-        GPIOx->CRL |= (0x8UL << shift); /* MODE=00, CNF=10 -> input pull-up/pull-down */
+        GPIOx->CRL |=  (0x8UL << shift); // MODE=00, CNF=10 -> input pull-up/pull-down
     } else {
         GPIOx->CRH &= ~(0xFUL << shift);
-        GPIOx->CRH |= (0x8UL << shift);
+        GPIOx->CRH |=  (0x8UL << shift);
     }
 }
 
 /* Helper: configure single pin as output push-pull, 2MHz (low speed) (pin is index 0..15) */
-static void gpio_config_output_pp(GPIO_TypeDef *GPIOx, uint32_t pin_num)
+static void gpio_config_output_pp(GPIO_TypeDef *GPIOx, uint16_t pin_mask)
 {
-	if (pin_num > 15) return;
+    if (pin_mask == 0) return;
+    /* ensure single-bit mask */
+    if ((pin_mask & (pin_mask - 1)) != 0) return;
 
-    uint32_t shift = (pin_num & 7) * 4;
-    if (pin_num < 8) {
+    gpio_enable_clock_for_port(GPIOx);
+
+    /* compute pin index 0..15 */
+    uint8_t pin = __builtin_ctz(pin_mask); // count trailing zeros
+
+    uint32_t shift = (pin & 7) * 4;
+    if (pin < 8) {
         GPIOx->CRL &= ~(0xFUL << shift);
-        GPIOx->CRL |= (0x2UL << shift); /* MODE=10 (2MHz), CNF=00 (GP push-pull) */
+        GPIOx->CRL |= (0x2UL << shift); // MODE=10 (2MHz), CNF=00 (GP push-pull)
     } else {
         GPIOx->CRH &= ~(0xFUL << shift);
         GPIOx->CRH |= (0x2UL << shift);
     }
 }
 
-/* Helper: enable correct EXTI IRQ for given pin index */
-static void enable_exti_irq_for_pin(uint32_t pin_idx, uint32_t priority)
+/* Helper: enable correct EXTI IRQ for given pin mask */
+static void enable_exti_irq_for_pin(uint16_t pin_mask, uint32_t priority)
 {
-    if (pin_idx <= 4) {
-        NVIC_SetPriority((IRQn_Type)(EXTI0_IRQn + pin_idx), priority);
-        NVIC_EnableIRQ((IRQn_Type)(EXTI0_IRQn + pin_idx));
-    } else if (pin_idx <= 9) {
+    if (pin_mask == 0) return;
+    /* ensure single-bit mask */
+    if ((pin_mask & (pin_mask - 1)) != 0) return;
+
+    /* compute pin index 0..15 */
+    uint8_t pin = __builtin_ctz(pin_mask); // count trailing zeros
+
+    if (pin <= 4) {
+        NVIC_SetPriority((IRQn_Type)(EXTI0_IRQn + pin), priority);
+        NVIC_EnableIRQ((IRQn_Type)(EXTI0_IRQn + pin));
+    } else if (pin <= 9) {
         NVIC_SetPriority(EXTI9_5_IRQn, priority);
         NVIC_EnableIRQ(EXTI9_5_IRQn);
     } else {
         NVIC_SetPriority(EXTI15_10_IRQn, priority);
         NVIC_EnableIRQ(EXTI15_10_IRQn);
+    }
+}
+
+/* Helper: configure one pin (mask) of a port as analog inputs */
+void gpio_config_analog_pin(GPIO_TypeDef *port, uint16_t pin_mask)
+{
+    if (pin_mask == 0) return;
+    /* ensure single-bit mask */
+    if ((pin_mask & (pin_mask - 1)) != 0) return;
+
+    gpio_enable_clock_for_port(port);
+
+    uint8_t pin = __builtin_ctz(pin_mask); // count trailing zeros
+    uint32_t shift = (pin & 7) * 4;
+
+    /* Set MODE=00, CNF=00 => clear the 4-bit field */
+    if (pin < 8) {
+        port->CRL &= ~(0xFUL << shift);
+    } else {
+        port->CRH &= ~(0xFUL << shift);
     }
 }
 
@@ -92,16 +142,16 @@ void GPIO_Init_CMSIS(void)
     /* Map EXTI lines to port B for lines 5 and 8 via AFIO->EXTICR */
     /* EXTI5 is in EXTICR[1] (lines 4..7), position for line5: bits [7:4] */
     AFIO->EXTICR[1] &= ~(0xFUL << 4);
-    AFIO->EXTICR[1] |= (0x1UL << 4); /* 0x1 = Port B */
+    AFIO->EXTICR[1] |= (0x1UL << 4); // 0x1 = Port B
 
     /* EXTI8 is in EXTICR[2] (lines 8..11), position for line8: bits [3:0] */
     AFIO->EXTICR[2] &= ~(0xFUL << 0);
-    AFIO->EXTICR[2] |= (0x1UL << 0); /* Port B */
+    AFIO->EXTICR[2] |= (0x1UL << 0); // Port B
 
     /* Unmask EXTI lines and set falling trigger only */
-    EXTI->IMR |= (1U << Speed_EXTI5_Pin) | (1U << PAS_EXTI8_Pin);
-    EXTI->FTSR |= (1U << Speed_EXTI5_Pin) | (1U << PAS_EXTI8_Pin);
-    EXTI->RTSR &= ~((1U << Speed_EXTI5_Pin) | (1U << PAS_EXTI8_Pin));
+    EXTI->IMR |= Speed_EXTI5_Pin | PAS_EXTI8_Pin;
+    EXTI->FTSR |= Speed_EXTI5_Pin | PAS_EXTI8_Pin;
+    EXTI->RTSR &= ~(Speed_EXTI5_Pin | PAS_EXTI8_Pin);
 
     /* Enable NVIC for the EXTI lines used, priority as small integer (0..max) */
     enable_exti_irq_for_pin(Speed_EXTI5_Pin, 2);
