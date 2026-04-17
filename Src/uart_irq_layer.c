@@ -122,7 +122,7 @@ void DMA1_Channel4_IRQHandler(void)
 void DMA1_Channel5_IRQHandler(void)
 {
     uint32_t isr = DMA1->ISR;
-    if (isr & DMA_ISR_TEIF5) { DMA1->IFCR = DMA_IFCR_CTEIF5; /* recovery */ }
-    if (isr & DMA_ISR_HTIF5) { DMA1->IFCR = DMA_IFCR_CHTIF5; /* optional hook */ }
-    if (isr & DMA_ISR_TCIF5) { DMA1->IFCR = DMA_IFCR_CTCIF5; /* circular: clear and continue */ }
+    if (isr & DMA_ISR_TEIF5) { DMA1->IFCR = DMA_IFCR_CTEIF5; } // recovery
+    if (isr & DMA_ISR_HTIF5) { DMA1->IFCR = DMA_IFCR_CHTIF5; } // optional hook
+    if (isr & DMA_ISR_TCIF5) { DMA1->IFCR = DMA_IFCR_CTCIF5; } // circular: clear and continue
 }

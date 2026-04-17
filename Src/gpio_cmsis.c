@@ -59,10 +59,10 @@ static void gpio_config_output_pp(GPIO_TypeDef *GPIOx, uint16_t pin_mask)
     uint32_t shift = (pin & 7) * 4;
     if (pin < 8) {
         GPIOx->CRL &= ~(0xFUL << shift);
-        GPIOx->CRL |= (0x2UL << shift); // MODE=10 (2MHz), CNF=00 (GP push-pull)
+        GPIOx->CRL |=  (0x2UL << shift); // MODE=10 (2MHz), CNF=00 (GP push-pull)
     } else {
         GPIOx->CRH &= ~(0xFUL << shift);
-        GPIOx->CRH |= (0x2UL << shift);
+        GPIOx->CRH |=  (0x2UL << shift);
     }
 }
 
@@ -89,22 +89,22 @@ static void enable_exti_irq_for_pin(uint16_t pin_mask, uint32_t priority)
 }
 
 /* Helper: configure one pin (mask) of a port as analog inputs */
-void gpio_config_analog_pin(GPIO_TypeDef *port, uint16_t pin_mask)
+void gpio_config_analog_pin(GPIO_TypeDef *GPIOx, uint16_t pin_mask)
 {
     if (pin_mask == 0) return;
     /* ensure single-bit mask */
     if ((pin_mask & (pin_mask - 1)) != 0) return;
 
-    gpio_enable_clock_for_port(port);
+    /* compute pin index 0..15 */
+    gpio_enable_clock_for_port(GPIOx);
 
     uint8_t pin = __builtin_ctz(pin_mask); // count trailing zeros
-    uint32_t shift = (pin & 7) * 4;
 
-    /* Set MODE=00, CNF=00 => clear the 4-bit field */
+    uint32_t shift = (pin & 7) * 4;
     if (pin < 8) {
-        port->CRL &= ~(0xFUL << shift);
+    	GPIOx->CRL &= ~(0xFUL << shift); /* Set MODE=00, CNF=00 => clear the 4-bit field */
     } else {
-        port->CRH &= ~(0xFUL << shift);
+    	GPIOx->CRH &= ~(0xFUL << shift);
     }
 }
 

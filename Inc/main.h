@@ -62,8 +62,8 @@
 #define Hall_3_EXTI_IRQn EXTI10_IRQn
 #define Throttle_Pin GPIO_PIN_4
 #define Throttle_GPIO_Port GPIOA
-#define Phase_Current1_Pin GPIO_PIN_0
-#define Phase_Current1_GPIO_Port GPIOA
+#define Phase_Current_1_Pin GPIO_PIN_0
+#define Phase_Current_1_GPIO_Port GPIOA
 #define Phase_Current_2_Pin GPIO_PIN_1
 #define Phase_Current_2_GPIO_Port GPIOC
 #define Phase_Current_3_Pin GPIO_PIN_0

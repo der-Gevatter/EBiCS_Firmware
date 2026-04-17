@@ -10,10 +10,28 @@
 #include "gpio_cmsis.h"
 #include "main.h"
 
-/* Helper: enable ADC clocks (APB2ENR ADC1/ADC2 share APB2ENR ADC1EN bit on F1) */
-static void adc_enable_clocks(void)
+/* Helper: enable clock for specific ADC instance (STM32F1) */
+static void adc_enable_clocks(ADC_TypeDef *ADCx)
 {
-    RCC->APB2ENR |= RCC_APB2ENR_ADC1EN; // ADC1 + ADC2 share enable
+    if (ADCx == ADC1) {
+        RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
+    }
+    else if (ADCx == ADC2) {
+        #ifdef RCC_APB2ENR_ADC2EN
+        RCC->APB2ENR |= RCC_APB2ENR_ADC2EN;
+        #else
+        /* If ADC2EN not present in header, enable ADC1EN which may also power ADC2 on some variants */
+        RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
+        #endif
+    }
+    else {
+        /* Unknown ADC instance: enable both if available as a safe fallback */
+        RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
+        #ifdef RCC_APB2ENR_ADC2EN
+        RCC->APB2ENR |= RCC_APB2ENR_ADC2EN;
+        #endif
+    }
+
     (void)RCC->APB2ENR;
     for (volatile int i = 0; i < 1000; ++i) __asm__("nop");
 }
@@ -123,8 +141,8 @@ void ADC1_CMSIS_Init(void)
     ADC1->CR2 = 0;
     ADC1->CR1 = 0;
 
-    /* 1) Enable clocks: ADC1, ADC2 on APB2; DMA1 on AHB */
-    adc_enable_clocks();
+    /* 1) Enable clocks: ADC1 on APB2; DMA1 on AHB */
+    adc_enable_clocks(ADC1);
     RCC->AHBENR |= RCC_AHBENR_DMA1EN;
 
     /* 2) Configure ADC common register set Dual Injected Simultaneous */
@@ -134,14 +152,14 @@ void ADC1_CMSIS_Init(void)
     ADC1->CR1 |= (0b101 << ADC_CR1_DUALMOD_Pos);
 
     /* 3) configure gpios analog */
-    gpio_config_analog_pin(GPIOA, Throttle_Pin);			// throttle
-    gpio_config_analog_pin(GPIOA, Phase_Current1_Pin);		// phase_current_1
-    gpio_config_analog_pin(GPIOA, GPIO_PIN_1);				// battery voltage
-    gpio_config_analog_pin(GPIOA, GPIO_PIN_5);				// AD1 - MotorTemp
-    gpio_config_analog_pin(GPIOC, Temperature_Pin);			// temperature
-    gpio_config_analog_pin(GPIOC, Phase_Current_2_Pin);		// phase_current_2
-    gpio_config_analog_pin(GPIOC, Phase_Current_3_Pin);		// phase_current_3
-    gpio_config_analog_pin(GPIOC, GPIO_PIN_4);				// AD2 - torque
+    gpio_config_analog_pin(Throttle_GPIO_Port, Throttle_Pin);					// throttle
+    gpio_config_analog_pin(Phase_Current_1_GPIO_Port, Phase_Current_1_Pin);		// phase_current_1
+    gpio_config_analog_pin(Phase_Current_2_GPIO_Port, Phase_Current_2_Pin);		// phase_current_2
+    gpio_config_analog_pin(Phase_Current_3_GPIO_Port, Phase_Current_3_Pin);		// phase_current_3
+    gpio_config_analog_pin(Temperature_GPIO_Port, Temperature_Pin);				// temperature
+    gpio_config_analog_pin(GPIOA, GPIO_PIN_1);									// battery voltage
+    gpio_config_analog_pin(GPIOA, GPIO_PIN_5);									// AD1 - MotorTemp
+    gpio_config_analog_pin(GPIOC, GPIO_PIN_4);									// AD2 - torque
 
     /* 4) ADC1 basic config: disable scan in CR1/CR2 then set right values */
     ADC1->CR1 |= ADC_CR1_SCAN;	  // we will set sequence length in SQR1
@@ -168,7 +186,7 @@ void ADC1_CMSIS_Init(void)
     ADC1->CR1 |= ADC_CR1_JEOCIE; // enable interrupt at end of injected conversion
 
     /* NVIC for ADC1_2 IRQ */
-    NVIC_SetPriority(ADC1_2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 3, 0));
+    NVIC_SetPriority(ADC1_2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
     NVIC_EnableIRQ(ADC1_2_IRQn);
 
     /* Ensure ADC is enabled for conversions */
@@ -177,8 +195,8 @@ void ADC1_CMSIS_Init(void)
 
 void ADC1_DMA_Init_Circular(volatile uint32_t* adcData, uint16_t len)
 {
-    /* enable Clocks */
-	adc_enable_clocks();
+    /* enable Clock */
+	adc_enable_clocks(ADC1);
     RCC->AHBENR |= RCC_AHBENR_DMA1EN;
 
     /* Use DMA1 Channel1 registers */
@@ -230,8 +248,8 @@ void ADC2_CMSIS_Init(void)
     ADC2->CR1 = 0;
     ADC2->CR2 = 0;
 
-    /* 1) enable ADC clocks (ADC1/ADC2 share APB2ENR ADC1EN on F1) */
-    adc_enable_clocks();
+    /* 1) enable ADC clock */
+    adc_enable_clocks(ADC2);
 
     /* 2) ADC2: sampling time for channel 11 (CH11 in SMPR1) */
     adc_set_sample_time(ADC2, 11, ADC_SAMPLETIME_1_5);
@@ -247,8 +265,9 @@ void ADC2_CMSIS_Init(void)
     ADC2->JSQR &= ~ADC_JSQR_JSQ4;            // clear JSQ fields area
     ADC2->JSQR |= (11 << ADC_JSQR_JSQ4_Pos); // JSQ1 position macro name used as in CMSIS for F1 headers
 
-    /* 4) Trigger: use software start for injected (JSWSTART) -> disable external injected trigger */
-    ADC2->CR2 &= ~(ADC_CR2_JEXTSEL | ADC_CR2_JEXTTRIG); /* ensure external injected trigger disabled */
+    /* 4) Trigger: use software start for injected (JSWSTART) */
+    ADC2->CR2 |= (0b111 << 12); // JEXTSEL = 7 (Bit 12-14)
+    ADC2->CR2 |= ADC_CR2_JEXTTRIG;
 
     /* 5) Offset for injected rank1 */
     ADC2->JOFR1 = 0;
@@ -256,7 +275,7 @@ void ADC2_CMSIS_Init(void)
     /* 6) Data alignment & scan/continuous: right aligned, no continuous */
     ADC2->CR2 &= ~ADC_CR2_ALIGN;
     ADC2->CR2 &= ~ADC_CR2_CONT;
-    ADC2->CR1 &= ~ADC_CR1_SCAN; /* injected only, clear scan for ADC2 unless you need injected scan */
+    ADC2->CR1 &= ~ADC_CR1_SCAN; // injected only, clear scan for ADC2 unless you need injected scan
 
     /* 7) Wake + calibrate ADC2 */
     adc_calibrate(ADC2);

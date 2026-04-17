@@ -8,8 +8,7 @@
 #include "uart_cmsis.h"
 #include "stm32f103x6.h"
 
-void MX_USART1_MspInit_CMSIS(void)
-//void UART1_Init(uint32_t baud)
+void USART1_Init_CMSIS(void)
 {
 
     /* 1) Enable clocks: GPIOB, USART1, AFIO, DMA1 */
@@ -22,16 +21,11 @@ void MX_USART1_MspInit_CMSIS(void)
     AFIO->MAPR |= AFIO_MAPR_USART1_REMAP;
 
     /* 3) Configure PB6 = TX (AF push-pull), PB7 = RX (input floating) */
-    GPIOB->CRL &= ~((0xF << (6*4)) | (0xF << (7*4))); /* clear pins 6/7 */
-    GPIOB->CRL |=  (0xB << (6*4)); /* MODE6=11(50MHz), CNF6=10(AF PP) */
-    GPIOB->CRL |=  (0x4 << (7*4)); /* MODE7=00, CNF7=01(Input floating) */
+    GPIOB->CRL &= ~((0xF << (6*4)) | (0xF << (7*4))); // clear pins 6/7
+    GPIOB->CRL |=  (0xB << (6*4)); // MODE6=11(50MHz), CNF6=10(AF PP)
+    GPIOB->CRL |=  (0x4 << (7*4)); // MODE7=00, CNF7=01(Input floating)
 
-    /* 4) USART1 basic enable (caller must configure baud/CR registers elsewhere)
-       Ensure USART1 not enabled here if already configured later.
-       We only ensure peripheral clock above.
-    */
-
-    /* 5) DMA configuration (reset CCRs first) */
+    /* 4) DMA configuration (reset CCRs first) */
     /* Disable channels before config */
     DMA1_Channel4->CCR &= ~DMA_CCR_EN;
     DMA1_Channel5->CCR &= ~DMA_CCR_EN;
@@ -50,13 +44,13 @@ void MX_USART1_MspInit_CMSIS(void)
        - Priority low (PL=00)
        - No circular, no mem-to-mem
     */
-    DMA1_Channel4->CCR = (1U << 4)   /* DIR: 1 = memory to peripheral (bit4) */
-                       | (0U << 6)   /* PINC: 0 */
-                       | (1U << 7)   /* MINC: 1 */
-                       | (0U << 8)   /* PSIZE: 00 = 8-bit */
-                       | (0U << 10)  /* MSIZE: 00 = 8-bit */
-                       | (0U << 5)   /* CIRC: 0 */
-                       | (0U << 14); /* PL: 00 = low priority (bits 13:14) */
+    DMA1_Channel4->CCR = (1U << 4)   // DIR: 1 = memory to peripheral (bit4)
+                       | (0U << 6)   // PINC: 0
+                       | (1U << 7)   // MINC: 1
+                       | (0U << 8)   // PSIZE: 00 = 8-bit
+                       | (0U << 10)  // MSIZE: 00 = 8-bit
+                       | (0U << 5)   // CIRC: 0
+                       | (0U << 14); // PL: 00 = low priority (bits 13:14)
 
     /* Peripheral address for TX: USART1->DR */
     DMA1_Channel4->CPAR = (uint32_t)&(USART1->DR);
@@ -70,13 +64,13 @@ void MX_USART1_MspInit_CMSIS(void)
        - Circular mode (CIRC = 1)
        - Priority low (PL = 00)
     */
-    DMA1_Channel5->CCR = (0U << 4)   /* DIR: 0 = peripheral to memory */
-                       | (0U << 6)   /* PINC: 0 */
-                       | (1U << 7)   /* MINC: 1 */
-                       | (0U << 8)   /* PSIZE: 00 */
-                       | (0U << 10)  /* MSIZE: 00 */
-                       | (1U << 5)   /* CIRC: 1 */
-                       | (0U << 14); /* PL: 00 */
+    DMA1_Channel5->CCR = (0U << 4)   // DIR: 0 = peripheral to memory
+                       | (0U << 6)   // PINC: 0
+                       | (1U << 7)   // MINC: 1
+                       | (0U << 8)   // PSIZE: 00
+                       | (0U << 10)  // MSIZE: 00
+                       | (1U << 5)   // CIRC: 1
+                       | (0U << 14); // PL: 00
 
     DMA1_Channel5->CPAR = (uint32_t)&(USART1->DR);
     /* CMAR and CNDTR set when enabling RX DMA transfer */
@@ -84,12 +78,7 @@ void MX_USART1_MspInit_CMSIS(void)
     /* Clear any pending DMA interrupt flags for channel4/5 */
     DMA1->IFCR = DMA_IFCR_CGIF4 | DMA_IFCR_CGIF5;
 
-    /* 6) NVIC: set priorities and enable IRQs
-       CMSIS NVIC_SetPriority uses single numeric priority. Map HAL (pre/sub) to one value:
-       USART1: (0,0) -> priority 0
-       DMA1_Channel5: (1,0) -> priority 1
-       DMA1_Channel4: (3,1) -> map to priority 3 (or 3)
-    */
+    /* 5) NVIC: set priorities and enable IRQs */
     NVIC_SetPriority(USART1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
     NVIC_EnableIRQ(USART1_IRQn);
 
@@ -101,7 +90,6 @@ void MX_USART1_MspInit_CMSIS(void)
 }
 
 /* ----------------- USART configuration (baud, enable, DMA requests) ----------------- */
-/* Call this after MX_USART1_DMA_Init_CMSIS() */
 void USART1_Config(uint32_t baudrate, uint32_t pclk2_hz)
 {
     /* Disable USART before config */

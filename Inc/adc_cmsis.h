@@ -21,9 +21,6 @@
 
 void ADC1_CMSIS_Init(void);
 void ADC2_CMSIS_Init(void);
-void ADC1_CMSIS_ConfigRegularSequence(const uint8_t *channels, uint8_t count);
-void ADC1_CMSIS_ConfigInjectedChannel(uint8_t channel);
-void ADC2_CMSIS_ConfigInjectedChannel(uint8_t channel);
 void ADC1_DMA_Init_Circular(volatile uint32_t* adcData, uint16_t len);
 
 #endif /* ADC_CMSIS_H_ */

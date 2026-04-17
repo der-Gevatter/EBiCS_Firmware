@@ -34,34 +34,34 @@
 #define GPIO_STATE_TOGGLE 2U
 
 /* perform atomic ops */
-static inline void gpio_set(GPIO_TypeDef *port, uint16_t pin_mask) {
-    port->BSRR = pin_mask;           // atomic set
+static inline void gpio_set(GPIO_TypeDef *GPIOx, uint16_t pin_mask) {
+	GPIOx->BSRR = pin_mask;           // atomic set
 }
 
-static inline void gpio_reset(GPIO_TypeDef *port, uint16_t pin_mask) {
-    port->BRR = pin_mask;            // atomic reset
+static inline void gpio_reset(GPIO_TypeDef *GPIOx, uint16_t pin_mask) {
+	GPIOx->BRR = pin_mask;            // atomic reset
 }
 
-static inline void gpio_toggle(GPIO_TypeDef *port, uint16_t pin_mask) {
-    port->ODR ^= pin_mask;           // not atomic; protect if concurrent access possible
+static inline void gpio_toggle(GPIO_TypeDef *GPIOx, uint16_t pin_mask) {
+	GPIOx->ODR ^= pin_mask;           // not atomic; protect if concurrent access possible
 }
 
-static inline void gpio_write(GPIO_TypeDef *port, uint16_t pin_mask, uint8_t state) {
+static inline void gpio_write(GPIO_TypeDef *GPIOx, uint16_t pin_mask, uint8_t state) {
     if (state == GPIO_STATE_SET) {
-        gpio_set(port, pin_mask);
+        gpio_set(GPIOx, pin_mask);
     } else if (state == GPIO_STATE_RESET) {
-        gpio_reset(port, pin_mask);
+        gpio_reset(GPIOx, pin_mask);
     } else {
-        gpio_toggle(port, pin_mask);
+        gpio_toggle(GPIOx, pin_mask);
     }
 }
 
 /* read input data register and return normalized bit (0 or 1) */
-static inline uint8_t gpio_read(GPIO_TypeDef *port, uint16_t pin_mask) {
-    return ( (port->IDR & pin_mask) ? 1U : 0U );
+static inline uint8_t gpio_read(GPIO_TypeDef *GPIOx, uint16_t pin_mask) {
+    return ( (GPIOx->IDR & pin_mask) ? 1U : 0U );
 }
 
 void GPIO_Init_CMSIS(void);
-void gpio_config_analog_pin(GPIO_TypeDef *port, uint16_t pin_mask);
+void gpio_config_analog_pin(GPIO_TypeDef *GPIOx, uint16_t pin_mask);
 
 #endif /* GPIO_CMSIS_H_ */
