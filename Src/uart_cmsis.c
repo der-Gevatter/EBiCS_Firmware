@@ -79,13 +79,13 @@ void USART1_Init_CMSIS(void)
     DMA1->IFCR = DMA_IFCR_CGIF4 | DMA_IFCR_CGIF5;
 
     /* 5) NVIC: set priorities and enable IRQs */
-    NVIC_SetPriority(USART1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+    NVIC_SetPriority(USART1_IRQn, 0);
     NVIC_EnableIRQ(USART1_IRQn);
 
-    NVIC_SetPriority(DMA1_Channel5_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 1, 0));
+    NVIC_SetPriority(DMA1_Channel5_IRQn, 1);
     NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 
-    NVIC_SetPriority(DMA1_Channel4_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 3, 1));
+    NVIC_SetPriority(DMA1_Channel4_IRQn, 3);
     NVIC_EnableIRQ(DMA1_Channel4_IRQn);
 }
 

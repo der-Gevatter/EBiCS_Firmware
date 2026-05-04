@@ -62,6 +62,8 @@ static inline uint8_t gpio_read(GPIO_TypeDef *GPIOx, uint16_t pin_mask) {
 }
 
 void GPIO_Init_CMSIS(void);
+void gpio_config_input_pu(GPIO_TypeDef *GPIOx, uint16_t pin_mask);
+void gpio_config_output_pp_af(GPIO_TypeDef *GPIOx, uint16_t pin_mask, int spd, int af);
 void gpio_config_analog_pin(GPIO_TypeDef *GPIOx, uint16_t pin_mask);
 
 #endif /* GPIO_CMSIS_H_ */

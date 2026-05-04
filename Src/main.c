@@ -38,12 +38,12 @@
  */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "stm32f1xx_hal.h"
 #include "sysclock_cmsis.h"
 #include "gpio_cmsis.h"
 #include "uart_cmsis.h"
 #include "uart_irq_layer.h"
 #include "adc_cmsis.h"
+#include "tim_cmsis.h"
 #include "systick.h"
 #include <stdio.h>
 
@@ -87,18 +87,6 @@
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
-//ADC_HandleTypeDef hadc1;
-ADC_HandleTypeDef hadc2;
-//DMA_HandleTypeDef hdma_adc1;
-
-TIM_HandleTypeDef htim1;
-TIM_HandleTypeDef htim2;
-TIM_HandleTypeDef htim3;
-
-UART_HandleTypeDef huart1;
-DMA_HandleTypeDef hdma_usart1_tx;
-DMA_HandleTypeDef hdma_usart1_rx;
-
 IWDG_HandleTypeDef hiwdg;
 
 /* USER CODE BEGIN PV */
@@ -224,7 +212,7 @@ q31_t Hall_4 = 0;
 
 const q31_t tics_lower_limit = WHEEL_CIRCUMFERENCE*5*3600/(6*GEAR_RATIO*SPEEDLIMIT*10); //tics=wheelcirc*timerfrequency/(no. of hallevents per rev*gear-ratio*speedlimit)*3600/1000000
 const q31_t tics_higher_limit = WHEEL_CIRCUMFERENCE*5*3600/(6*GEAR_RATIO*(SPEEDLIMIT+2)*10);
-uint32_t uint32_tics_filtered=1000000;
+volatile uint32_t uint32_tics_filtered=1000000;
 
 uint16_t VirtAddVarTab[NB_OF_VAR] = { 	EEPROM_POS_HALL_ORDER,
 		EEPROM_POS_HALL_45,
@@ -280,13 +268,9 @@ int16_t power;										//recent power output
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
-static void MX_TIM1_Init(void);
-static void MX_TIM2_Init(void);
-static void MX_TIM3_Init(void);
 void init_watchdog(void);
 void MX_IWDG_Init(void);
 void get_internal_temp_offset(void);
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 void Set_Hall_Logic(void);
 void Set_Hall_Angle60(void);
 void Set_Hall_Angle120(void);
@@ -312,7 +296,6 @@ int8_t tics_to_speed (uint32_t tics);
 int16_t internal_tics_to_speedx100 (uint32_t tics);
 int16_t external_tics_to_speedx100 (uint32_t tics);
 
-
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -334,8 +317,8 @@ int main(void)
 	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
 	HAL_Init();
 
-	/* Set priority grouping to [0..3], [0..3] */
-	NVIC_SetPriorityGrouping(0x03);
+	/* Set priority grouping to [0..15] */
+	NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 
 	/* Configure the system clock */
 	SystemClock_Config_CMSIS();
@@ -415,48 +398,26 @@ int main(void)
 	/* Start DMA in circular mode */
 	ADC1_DMA_Init_Circular((uint32_t*)adcData, 8);
 
+	/* Init Timer 1 */
+	TIM1_CMSIS_Init();
 
-	MX_TIM1_Init(); //Hier die Reihenfolge getauscht!
-	MX_TIM2_Init();
-	MX_TIM3_Init();
+	/* Init Timer 2 */
+	TIM2_CMSIS_Init();
+
+	/* Init Timer 3 */
+	TIM3_CMSIS_Init();
 
 	// Start Timer 1
-	if(HAL_TIM_Base_Start_IT(&htim1) != HAL_OK)
-	{
-		/* Counter Enable Error */
-		Error_Handler();
-	}
-
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); // turn on complementary channel
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
-
-	HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_4);
-
-
-
+	tim1_start_pwm();
 
 	TIM1->CCR4 = TRIGGER_DEFAULT; //ADC sampling just before timer overflow (just before middle of PWM-Cycle)
 	//PWM Mode 1: Interrupt at counting down.
 
-	//TIM1->BDTR |= 1L<<15;
-	// TIM1->BDTR &= ~(1L<<15); //reset MOE (Main Output Enable) bit to disable PWM output
 	// Start Timer 2
-	HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
-	HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_2);
-	HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_3);
+	TIM2_CMSIS_Start();
 
 	// Start Timer 3
-
-	if(HAL_TIM_Base_Start_IT(&htim3) != HAL_OK)
-	{
-		/* Counter Enable Error */
-		Error_Handler();
-	}
-
+	TIM3_CMSIS_Start();
 
 #if (DISPLAY_TYPE & DISPLAY_TYPE_KINGMETER || DISPLAY_TYPE & DISPLAY_TYPE_DEBUG)
 	KingMeter_Init (&KM);
@@ -1014,7 +975,7 @@ int main(void)
 					PI_iq.integral_part = ((((uint32_SPEEDx100_cumulated*_T))/(MS.Voltage*ui32_KV))<<4)<<PI_iq.shift;
 					PI_iq.out=PI_iq.integral_part;
 				}
-				__HAL_TIM_SET_COUNTER(&htim2,0); //reset tim2 counter
+				//TIM2->CNT = 0; //reset tim2 counter
 				ui16_timertics=20000; //set interval between two hallevents to a large value
 				i8_recent_rotor_direction=i8_direction*i8_reverse_flag*sign(MS.i_q_setpoint);
 				get_standstill_position();
@@ -1078,7 +1039,7 @@ int main(void)
 #if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG && !defined(FAST_LOOP_LOG))
 				//print values for debugging
 
-				sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n",
+				/*sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n",
 						adcData[1],
 						i16_60deg_Hall_flag,
 						ui8_hall_state,
@@ -1087,7 +1048,8 @@ int main(void)
 						int32_temp_current_target ,
 						MS.i_q,
 						MS.u_abs,
-						SystemState);
+						SystemState);*/
+				sprintf_(buffer, "%d, %d\r\n", temp5, temp6);
 				// sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5]),(uint16_t)(adcData[6])) ;
 				// sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",tic_array[0],tic_array[1],tic_array[2],tic_array[3],tic_array[4],tic_array[5]) ;
 				i=0;
@@ -1144,237 +1106,27 @@ int main(void)
 
 	}
 
-	/* TIM1 init function */
-	static void MX_TIM1_Init(void)
-	{
-
-		TIM_ClockConfigTypeDef sClockSourceConfig;
-		TIM_MasterConfigTypeDef sMasterConfig;
-		TIM_OC_InitTypeDef sConfigOC;
-		TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig;
-
-		htim1.Instance = TIM1;
-		htim1.Init.Prescaler = 0;
-		htim1.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
-		htim1.Init.Period = _T;
-		htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-		htim1.Init.RepetitionCounter = 0;
-		htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-		if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-		if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		if (HAL_TIM_OC_Init(&htim1) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		sMasterConfig.MasterOutputTrigger = TIM_TRGO_OC4REF;
-		sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-		if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		sConfigOC.OCMode = TIM_OCMODE_PWM1;
-		sConfigOC.Pulse = 1;
-		sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-		sConfigOC.OCNPolarity = TIM_OCNPOLARITY_LOW;
-		sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-		sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
-		sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_SET;
-		if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		//sConfigOC.OCMode = TIM_OCMODE_ACTIVE; // war hier ein Bock?!
-		sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
-		if (HAL_TIM_OC_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
-		sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
-		sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-		sBreakDeadTimeConfig.DeadTime = 32;
-		sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
-		sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
-		sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
-		if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		HAL_TIM_MspPostInit(&htim1);
-
-	}
-
-	/* TIM2 init function */
-	static void MX_TIM2_Init(void)
-	{
-		TIM_ClockConfigTypeDef sClockSourceConfig;
-		TIM_SlaveConfigTypeDef sSlaveConfig;
-		TIM_MasterConfigTypeDef sMasterConfig;
-		TIM_IC_InitTypeDef sConfigIC;
-
-		htim2.Instance = TIM2;
-		htim2.Init.Prescaler = 128;
-		htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-		htim2.Init.Period = 65535;
-		htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-		htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-		if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-		if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		if (HAL_TIM_IC_Init(&htim2) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		sSlaveConfig.SlaveMode = TIM_SLAVEMODE_RESET;
-		sSlaveConfig.InputTrigger = TIM_TS_TI1F_ED;
-		sSlaveConfig.TriggerFilter = 8;
-		if (HAL_TIM_SlaveConfigSynchronization(&htim2, &sSlaveConfig) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-		sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-		if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
-		sConfigIC.ICSelection = TIM_ICSELECTION_TRC;
-		sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
-		sConfigIC.ICFilter = 15;
-		if (HAL_TIM_IC_ConfigChannel(&htim2, &sConfigIC, TIM_CHANNEL_1) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
-		if (HAL_TIM_IC_ConfigChannel(&htim2, &sConfigIC, TIM_CHANNEL_2) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		if (HAL_TIM_IC_ConfigChannel(&htim2, &sConfigIC, TIM_CHANNEL_3) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		if (HAL_TIM_ConfigTI1Input(&htim2, TIM_TI1SELECTION_XORCOMBINATION) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-	}
-
-	/* TIM3 init function 8kHz interrupt frequency for regular adc triggering */
-	static void MX_TIM3_Init(void)
-	{
-
-		TIM_ClockConfigTypeDef sClockSourceConfig;
-		TIM_MasterConfigTypeDef sMasterConfig;
-
-		htim3.Instance = TIM3;
-		htim3.Init.Prescaler = 0;
-		htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-		htim3.Init.Period = 7813;
-		htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-		htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-		if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-		if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		sMasterConfig.MasterOutputTrigger = TIM_TRGO_OC1;
-		sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-		if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
-		{
-			_Error_Handler(__FILE__, __LINE__);
-		}
-
-		HAL_TIM_MspPostInit(&htim3);
-
-	}
-
-	void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+	void TIM3_UpdateCallback(void)
 	{
 		//HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
-		if (htim == &htim3) {
 
 #if SPEED_PLL
-			if(!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE))q31_rotorposition_PLL += (q31_angle_per_tic<<1);
+		if(!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE))q31_rotorposition_PLL += (q31_angle_per_tic<<1);
 #endif
 
-			if(ui32_tim3_counter<32000)ui32_tim3_counter++;
-			if (uint32_PAS_counter < PAS_TIMEOUT+1){
-				uint32_PAS_counter++;
-				if(HAL_GPIO_ReadPin(PAS_GPIO_Port, PAS_Pin))uint32_PAS_HIGH_counter++;
-			}
-			if (uint32_SPEED_counter<128000)uint32_SPEED_counter++;					//counter for external Speedsensor
-			if(uint16_full_rotation_counter<8000)uint16_full_rotation_counter++;	//full rotation counter for motor standstill detection
-			if(uint16_half_rotation_counter<8000)uint16_half_rotation_counter++;	//half rotation counter for motor standstill detection
-
+		if(ui32_tim3_counter<32000)ui32_tim3_counter++;
+		if (uint32_PAS_counter < PAS_TIMEOUT+1){
+			uint32_PAS_counter++;
+			if(HAL_GPIO_ReadPin(PAS_GPIO_Port, PAS_Pin))uint32_PAS_HIGH_counter++;
 		}
+		if (uint32_SPEED_counter<128000)uint32_SPEED_counter++;					//counter for external Speedsensor
+		if(uint16_full_rotation_counter<8000)uint16_full_rotation_counter++;	//full rotation counter for motor standstill detection
+		if(uint16_half_rotation_counter<8000)uint16_half_rotation_counter++;	//half rotation counter for motor standstill detection
+
 		//HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 	}
 
-
-
-/*
-	// regular ADC callback
-	void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
-	{
-		ui8_adc_regular_flag=1;
-
-	}
-*/
-
 	//injected ADC
-
 	void ADC_InjectedConvCpltCallback(void)
 	{
 		//for oszi-check of used time in FOC procedere
@@ -1453,7 +1205,7 @@ int main(void)
 			__disable_irq(); //ENTER CRITICAL SECTION!!!!!!!!!!!!!
 
 			//extrapolate recent rotor position
-			ui16_tim2_recent = __HAL_TIM_GET_COUNTER(&htim2); // read in timertics since last event
+			ui16_tim2_recent = TIM2->CNT; // read in timertics since last event
 			if (MS.hall_angle_detect_flag) {
 				if(ui16_timertics<SIXSTEPTHRESHOLD && ui16_tim2_recent<200)ui8_6step_flag=0;
 				if(ui16_timertics>(SIXSTEPTHRESHOLD*6)>>2)ui8_6step_flag=1;
@@ -1504,7 +1256,7 @@ int main(void)
 			if (READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)){
 				FOC_calculation(i16_ph1_current, i16_ph2_current, q31_rotorposition_absolute, (((int16_t)i8_direction*i8_reverse_flag)*MS.i_q_setpoint), &MS);
 			}
-			//temp5=__HAL_TIM_GET_COUNTER(&htim1);
+			//temp5=TIM1->CNT;
 			//set PWM
 
 			TIM1->CCR1 =  (uint16_t) switchtime[0];
@@ -1519,15 +1271,13 @@ int main(void)
 
 	}
 
-	void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef* htim)
+	void TIM2_CaptureCallback(uint8_t channel, uint32_t diff)
 	{
-		//__HAL_TIM_SET_COUNTER(&htim2,0); //reset tim2 counter
 		//	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 
 		temp5=TIM3->CNT;
 
-		if(TIM2->CCR1>20)ui16_timertics = TIM2->CCR1; //debounce hall signals
-
+		if(diff>20)ui16_timertics = diff; //debounce hall signals
 
 		//Hall sensor event processing
 
@@ -1567,7 +1317,7 @@ int main(void)
 #else
 		Set_Hall_Angle120();
 #endif
-
+		temp6=uint32_tics_filtered;
 		uint32_tics_filtered-=uint32_tics_filtered>>3;
 		uint32_tics_filtered+=ui16_timertics;
 
@@ -1681,7 +1431,7 @@ int main(void)
 #if (SPEEDSOURCE  == EXTERNAL)
 		No2.Tx.Wheeltime_ms = ((MS.Speed>>3)*PULSES_PER_REVOLUTION); //>>3 because of 8 kHz counter frequency, so 8 tics per ms
 #else
-		if(__HAL_TIM_GET_COUNTER(&htim2) < 12000)
+		if(TIM2->CNT < 12000)
 		{
 			No2.Tx.Wheeltime_ms = (MS.Speed*GEAR_RATIO*6)>>9; //>>9 because of 500kHZ timer2 frequency, 512 tics per ms should be OK *6 because of 6 hall interrupts per electric revolution.
 
@@ -1747,7 +1497,7 @@ int main(void)
 #if (SPEEDSOURCE  == EXTERNAL)
 		KM.Tx.Wheeltime_ms = ((MS.Speed>>3)*PULSES_PER_REVOLUTION); //>>3 because of 8 kHz counter frequency, so 8 tics per ms
 #else
-		if(__HAL_TIM_GET_COUNTER(&htim2) < 12000)
+		if(TIM2->CNT < 12000)
 		{
 			KM.Tx.Wheeltime_ms = (MS.Speed*GEAR_RATIO*6)>>9; //>>9 because of 500kHZ timer2 frequency, 512 tics per ms should be OK *6 because of 6 hall interrupts per electric revolution.
 
@@ -1831,7 +1581,7 @@ int main(void)
 		else BF.Tx.Speed = 0;
 
 #else
-		if(__HAL_TIM_GET_COUNTER(&htim2) < 12000 && MS.system_state != Stop)
+		if(TIM2->CNT < 12000 && MS.system_state != Stop)
 		{
 			BF.Tx.Speed =(internal_tics_to_speedx100(MS.Speed)*20)>>8; //factor is *20/256, found empiric
 
@@ -2079,7 +1829,7 @@ int main(void)
 
 	void get_standstill_position(){
 		delay_ms(100);
-		HAL_TIM_IC_CaptureCallback(&htim2); //read in initial rotor position
+		TIM2_CaptureCallback(1, TIM2->CCR1);
 
 		switch (ui8_hall_state) {
 		//6 cases for forward direction

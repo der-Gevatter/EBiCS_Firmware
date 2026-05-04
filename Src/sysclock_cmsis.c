@@ -51,5 +51,5 @@ void SystemClock_Config_CMSIS(void)
     SysTick->LOAD = (SystemCoreClock / 1000U) - 1U;
     SysTick->VAL = 0;
     SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk;
-    NVIC_SetPriority(SysTick_IRQn, 0);
+    NVIC_SetPriority(SysTick_IRQn, 3);
 }

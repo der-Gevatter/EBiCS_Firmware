@@ -20,7 +20,7 @@ static void gpio_enable_clock_for_port(GPIO_TypeDef *port)
 
 /* Helper: configure single pin as input pull-up (pin is index 0..15) */
 /* pin_mask must be exactly one bit (HAL format e.g. 0x0020). */
-static void gpio_config_input_pu(GPIO_TypeDef *GPIOx, uint16_t pin_mask)
+void gpio_config_input_pu(GPIO_TypeDef *GPIOx, uint16_t pin_mask)
 {
     if (pin_mask == 0) return;
     /* ensure single-bit mask */
@@ -44,25 +44,40 @@ static void gpio_config_input_pu(GPIO_TypeDef *GPIOx, uint16_t pin_mask)
     }
 }
 
-/* Helper: configure single pin as output push-pull, 2MHz (low speed) (pin is index 0..15) */
-static void gpio_config_output_pp(GPIO_TypeDef *GPIOx, uint16_t pin_mask)
+/* configure single pin as output push-pull, 2MHz (low speed) or AF push-pull if af==1 */
+void gpio_config_output_pp_af(GPIO_TypeDef *GPIOx, uint16_t pin_mask, int spd, int af)
 {
     if (pin_mask == 0) return;
     /* ensure single-bit mask */
     if ((pin_mask & (pin_mask - 1)) != 0) return;
 
-    gpio_enable_clock_for_port(GPIOx);
+    gpio_enable_clock_for_port(GPIOx); // enable port clock
 
     /* compute pin index 0..15 */
     uint8_t pin = __builtin_ctz(pin_mask); // count trailing zeros
-
     uint32_t shift = (pin & 7) * 4;
-    if (pin < 8) {
-        GPIOx->CRL &= ~(0xFUL << shift);
-        GPIOx->CRL |=  (0x2UL << shift); // MODE=10 (2MHz), CNF=00 (GP push-pull)
+    uint32_t val = 0;
+
+    /* setting mode based on speed (spd) */
+    switch(spd){
+        case 1:  val = 0x1UL; break; // 10MHz
+        case 2:  val = 0x2UL; break; // 2MHz
+        case 3:  val = 0x3UL; break; // 50MHz
+        default: val = 0x2UL; break; // fallback to 2MHz
+    }
+
+    if (af) {
+        val |= (0x2UL << 2); /* CNF = 10 -> AF push-pull */
     } else {
-        GPIOx->CRH &= ~(0xFUL << shift);
-        GPIOx->CRH |=  (0x2UL << shift);
+        /* CNF = 00 -> GP push-pull (val already MODE bits) */
+    }
+
+    if (pin < 8) {
+        GPIOx->CRL &= ~(0xFUL << shift); // clear field
+        GPIOx->CRL |=  (val << shift);   // set MODE/CNF
+    } else {
+        GPIOx->CRH &= ~(0xFUL << shift); // clear field
+        GPIOx->CRH |=  (val << shift);   // set MODE/CNF
     }
 }
 
@@ -131,13 +146,13 @@ void GPIO_Init_CMSIS(void)
     LED_GPIO_Port->ODR &= ~(1U << LED_Pin);
 
     /* LED pin output push-pull, low speed */
-    gpio_config_output_pp(LED_GPIO_Port, LED_Pin);
+    gpio_config_output_pp_af(LED_GPIO_Port, LED_Pin, 2, 0);
 
     /* LIGHT pin output push-pull */
-    gpio_config_output_pp(LIGHT_GPIO_Port, LIGHT_Pin);
+    gpio_config_output_pp_af(LIGHT_GPIO_Port, LIGHT_Pin, 2, 0);
 
     /* BRAKE_LIGHT pin output push-pull */
-    gpio_config_output_pp(BRAKE_LIGHT_GPIO_Port, BRAKE_LIGHT_Pin);
+    gpio_config_output_pp_af(BRAKE_LIGHT_GPIO_Port, BRAKE_LIGHT_Pin, 2, 0);
 
     /* Map EXTI lines to port B for lines 5 and 8 via AFIO->EXTICR */
     /* EXTI5 is in EXTICR[1] (lines 4..7), position for line5: bits [7:4] */

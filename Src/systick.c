@@ -41,6 +41,6 @@ void delay_ms(uint32_t ms)
 {
     uint32_t start = systick_ms();
     while ((systick_ms() - start) < ms) {
-        __WFI(); /* optional: wait for interrupt to reduce power while waiting */
+       // __WFI(); /* optional: wait for interrupt to reduce power while waiting */
     }
 }

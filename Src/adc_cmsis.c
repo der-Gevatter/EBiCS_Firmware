@@ -128,7 +128,7 @@ static void ADC1_ConfigInjected(void)
 
     /* Sampling time for injected channel: set very small or larger */
     /* set SMPR2 for channel0 to 1.5 cycles (0) */
-    adc_set_sample_time(ADC1, 0, ADC_SAMPLETIME_1_5);
+    adc_set_sample_time(ADC1, 0, ADC_SAMPLETIME_7_5);
 
     /* set offset to 0 - will be dynamically changed later */
     ADC1->JOFR1 = 0;
@@ -186,7 +186,7 @@ void ADC1_CMSIS_Init(void)
     ADC1->CR1 |= ADC_CR1_JEOCIE; // enable interrupt at end of injected conversion
 
     /* NVIC for ADC1_2 IRQ */
-    NVIC_SetPriority(ADC1_2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+    NVIC_SetPriority(ADC1_2_IRQn, 0);
     NVIC_EnableIRQ(ADC1_2_IRQn);
 
     /* Ensure ADC is enabled for conversions */
@@ -232,7 +232,7 @@ void ADC1_DMA_Init_Circular(volatile uint32_t* adcData, uint16_t len)
     DMA1_Channel1->CCR |= DMA_CCR_EN;
 
     /* NVIC for DMA1 Channel1 IRQ */
-    NVIC_SetPriority(DMA1_Channel1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 1));
+    NVIC_SetPriority(DMA1_Channel1_IRQn, 0);
     NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
     /* Linkage: start ADC multi-mode DMA: in CMSIS we enable DMA request from ADC1 CR2 */
@@ -252,7 +252,7 @@ void ADC2_CMSIS_Init(void)
     adc_enable_clocks(ADC2);
 
     /* 2) ADC2: sampling time for channel 11 (CH11 in SMPR1) */
-    adc_set_sample_time(ADC2, 11, ADC_SAMPLETIME_1_5);
+    adc_set_sample_time(ADC2, 11, ADC_SAMPLETIME_7_5);
 
     /* 3) Configure injected sequence: 1 conversion, rank1 = ch11 */
     ADC2->JSQR = 0;

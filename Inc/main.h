@@ -48,7 +48,7 @@
 
 
 /* USER CODE END Includes */
-
+#define USE_CMSIS
 /* Private define ------------------------------------------------------------*/
 
 #define Hall_1_Pin GPIO_PIN_15
@@ -148,6 +148,13 @@ void runPIcontrol();
 void kingmeter_update(void);
 void No2_update(void);
 
+
+extern uint16_t ui16_timertics;
+//bextern uint32_t uint32_tics_filtered;
+extern q31_t q31_angle_per_tic;
+extern volatile uint8_t ui8_SPEED_control_flag;
+
+
 extern uint16_t switchtime[3];
 extern uint32_t ui32_tim1_counter;
 extern uint32_t uint32_PAS_counter;
@@ -228,6 +235,8 @@ typedef struct
 
 enum state {Stop, SixStep, Regen, Running, BatteryCurrentLimit, Interpolation, PLL, IdleRun};
 enum state SystemState;
+
+extern MotorState_t MS;
 
 /* USER CODE END Private defines */
 
